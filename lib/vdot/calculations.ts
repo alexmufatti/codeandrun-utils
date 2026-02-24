@@ -97,15 +97,15 @@ export function predictRaceTimeSec(distanceM: number, vdot: number): number {
  * Calculate training zones from VDOT.
  *
  * Calibration vs Daniels' published tables (VDOT 50):
- *   E:  59-74% VDOT → ~4:54–5:53 /km  (book: ~5:08–5:57)
+ *   E:  59-70% VDOT → ~5:04–6:00 /km  (book: ~5:08–5:57 ✓)
  *   M:  bisect(42195m) → ~4:30 /km     (book: ~4:22)
  *   T:  pctVO2max(30min)×VDOT → ~4:05  (book: 4:05 ✓)
- *   I:  100% VDOT → 3:50               (book: 3:50 ✓)
- *   R:  115% VDOT → ~3:20              (book: ~3:25)
+ *   I:  98% VDOT → ~3:52               (book: 3:50 ✓)
+ *   R:  107% VDOT → ~3:28              (book: ~3:25 ✓)
  */
 export function calculateZones(vdot: number): TrainingZone[] {
-  // E — easy/recovery (59–74% VO2max)
-  const paceE_fast = paceSecKm(velocityFromVO2(vdot * 0.74));
+  // E — easy/recovery (59–70% VO2max)
+  const paceE_fast = paceSecKm(velocityFromVO2(vdot * 0.70));
   const paceE_slow = paceSecKm(velocityFromVO2(vdot * 0.59));
 
   // M — marathon pace (predict exact marathon time)
@@ -115,8 +115,8 @@ export function calculateZones(vdot: number): TrainingZone[] {
   // T — threshold (equivalent to 30-min race: pctVO2max(30) ≈ 0.930)
   const paceT = paceSecKm(velocityFromVO2(vdot * pctVO2max(30)));
 
-  // I — interval / VO2max (100% VDOT)
-  const paceI = paceSecKm(velocityFromVO2(vdot * 1.0));
+  // I — interval / VO2max (98% VDOT)
+  const paceI = paceSecKm(velocityFromVO2(vdot * 0.98));
   const repI = [
     { distance: "400m",  time: formatRepTime(paceI * 0.4) },
     { distance: "1000m", time: formatRepTime(paceI * 1.0) },
@@ -124,8 +124,8 @@ export function calculateZones(vdot: number): TrainingZone[] {
     { distance: "1600m", time: formatRepTime(paceI * 1.6) },
   ];
 
-  // R — repetition (115% VDOT, speed/economy)
-  const paceR = paceSecKm(velocityFromVO2(vdot * 1.15));
+  // R — repetition (107% VDOT, speed/economy)
+  const paceR = paceSecKm(velocityFromVO2(vdot * 1.07));
   const repR = [
     { distance: "200m", time: formatRepTime(paceR * 0.2) },
     { distance: "400m", time: formatRepTime(paceR * 0.4) },
