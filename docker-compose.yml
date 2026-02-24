@@ -1,6 +1,6 @@
 services:
   web:
-    build: .
+    image: codeandrun-web:latest
     ports:
       - "3000:3000"
     env_file:
