@@ -2,12 +2,14 @@
 
 import { signIn, signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "@/lib/i18n/LanguageContext";
 
 export default function LoginButton() {
   const { data: session, status } = useSession();
+  const { t } = useTranslations();
 
   if (status === "loading") {
-    return <Button disabled>Loading...</Button>;
+    return <Button disabled>{t.auth.loading}</Button>;
   }
 
   if (session) {
@@ -25,7 +27,7 @@ export default function LoginButton() {
           {session.user?.name}
         </span>
         <Button variant="outline" size="sm" onClick={() => signOut({ callbackUrl: "/" })}>
-          Logout
+          {t.auth.logout}
         </Button>
       </div>
     );
@@ -33,7 +35,7 @@ export default function LoginButton() {
 
   return (
     <Button onClick={() => signIn("google", { callbackUrl: "/dashboard/weight" })}>
-      Login con Google
+      {t.auth.loginGoogle}
     </Button>
   );
 }

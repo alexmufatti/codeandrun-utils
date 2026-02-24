@@ -1,6 +1,7 @@
 import DashboardNav from "@/components/dashboard/DashboardNav";
 import LoginButton from "@/components/auth/LoginButton";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { LangToggle } from "@/components/ui/LangToggle";
 
 export default function DashboardLayout({
   children,
@@ -17,6 +18,7 @@ export default function DashboardLayout({
             <DashboardNav />
           </div>
           <div className="flex items-center gap-1">
+            <LangToggle />
             <ThemeToggle />
             <LoginButton />
           </div>

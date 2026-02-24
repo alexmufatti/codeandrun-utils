@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "next-themes";
+import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -31,10 +32,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider attribute="class" defaultTheme="dark" disableTransitionOnChange>
-          <SessionProvider>
-            {children}
-            <Toaster richColors position="top-right" />
-          </SessionProvider>
+          <LanguageProvider>
+            <SessionProvider>
+              {children}
+              <Toaster richColors position="top-right" />
+            </SessionProvider>
+          </LanguageProvider>
         </ThemeProvider>
       </body>
     </html>

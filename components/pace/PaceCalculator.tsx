@@ -16,14 +16,9 @@ import {
   calculateDistance,
   generateSplits,
 } from "@/lib/pace/calculations";
+import { useTranslations } from "@/lib/i18n/LanguageContext";
 import type { CalcMode, SplitUnit } from "@/types/pace";
 import { cn } from "@/lib/utils";
-
-const MODES: { value: CalcMode; label: string }[] = [
-  { value: "pace", label: "Calcola Passo" },
-  { value: "time", label: "Calcola Tempo" },
-  { value: "distance", label: "Calcola Distanza" },
-];
 
 const PRESET_DISTANCES: { label: string; value: string }[] = [
   { label: "5K", value: "5" },
@@ -33,12 +28,19 @@ const PRESET_DISTANCES: { label: string; value: string }[] = [
 ];
 
 export default function PaceCalculator() {
+  const { t } = useTranslations();
   const [mode, setMode] = useState<CalcMode>("pace");
   const [distanceInput, setDistanceInput] = useState("");
   const [timeInput, setTimeInput] = useState("");
   const [paceInput, setPaceInput] = useState("");
   const [showSplits, setShowSplits] = useState(false);
   const [splitUnit, setSplitUnit] = useState<SplitUnit>("km");
+
+  const MODES: { value: CalcMode; label: string }[] = [
+    { value: "pace", label: t.pace.calcPaceMode },
+    { value: "time", label: t.pace.calcTimeMode },
+    { value: "distance", label: t.pace.calcDistanceMode },
+  ];
 
   const result = useMemo(() => {
     const dist = parseFloat(distanceInput);
@@ -47,19 +49,18 @@ export default function PaceCalculator() {
 
     if (mode === "pace") {
       if (!isFinite(dist) || dist <= 0 || !isFinite(timeSec) || timeSec <= 0) return null;
-      return { value: formatPace(calculatePace(dist, timeSec)), label: "Passo" };
+      return { value: formatPace(calculatePace(dist, timeSec)), label: t.pace.paceLabel };
     }
     if (mode === "time") {
       if (!isFinite(dist) || dist <= 0 || !isFinite(paceSec) || paceSec <= 0) return null;
-      return { value: formatTime(calculateTime(dist, paceSec)), label: "Tempo totale" };
+      return { value: formatTime(calculateTime(dist, paceSec)), label: t.pace.timeLabel };
     }
-    // mode === "distance"
     if (!isFinite(timeSec) || timeSec <= 0 || !isFinite(paceSec) || paceSec <= 0) return null;
     return {
       value: `${calculateDistance(timeSec, paceSec).toFixed(3)} km`,
-      label: "Distanza",
+      label: t.pace.distanceLabel,
     };
-  }, [mode, distanceInput, timeInput, paceInput]);
+  }, [mode, distanceInput, timeInput, paceInput, t]);
 
   const splits = useMemo(() => {
     if (!showSplits) return [];
@@ -72,7 +73,6 @@ export default function PaceCalculator() {
     } else if (mode === "time") {
       paceSec = parsePace(paceInput);
     } else {
-      // distance mode — can't know distance without result
       return [];
     }
 
@@ -85,7 +85,7 @@ export default function PaceCalculator() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Calcolatore di Passo</CardTitle>
+        <CardTitle>{t.pace.calculatorTitle}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
         {/* Mode selector */}
@@ -135,7 +135,7 @@ export default function PaceCalculator() {
                   : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
               )}
             >
-              Libera
+              {t.pace.freeDistance}
             </button>
           </div>
         )}
@@ -144,7 +144,7 @@ export default function PaceCalculator() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Distance */}
           <div className="flex flex-col gap-1.5">
-            <Label>Distanza (km)</Label>
+            <Label>{t.pace.distanceLabel}</Label>
             {mode === "distance" ? (
               <div className={cn(
                 "flex h-9 items-center rounded-md border border-primary bg-primary/5 px-3 text-sm font-semibold text-primary",
@@ -163,7 +163,7 @@ export default function PaceCalculator() {
 
           {/* Time */}
           <div className="flex flex-col gap-1.5">
-            <Label>Tempo (H:MM:SS)</Label>
+            <Label>{t.pace.timeLabel}</Label>
             {mode === "time" ? (
               <div className={cn(
                 "flex h-9 items-center rounded-md border border-primary bg-primary/5 px-3 text-sm font-semibold text-primary font-mono",
@@ -183,7 +183,7 @@ export default function PaceCalculator() {
 
           {/* Pace */}
           <div className="flex flex-col gap-1.5">
-            <Label>Passo (MM:SS /km)</Label>
+            <Label>{t.pace.paceLabel}</Label>
             {mode === "pace" ? (
               <div className={cn(
                 "flex h-9 items-center rounded-md border border-primary bg-primary/5 px-3 text-sm font-semibold text-primary font-mono",
@@ -211,7 +211,7 @@ export default function PaceCalculator() {
                 size="sm"
                 onClick={() => setShowSplits((v) => !v)}
               >
-                {showSplits ? "Nascondi split" : "Mostra split"}
+                {showSplits ? t.pace.hideSplits : t.pace.showSplits}
               </Button>
 
               {showSplits && (

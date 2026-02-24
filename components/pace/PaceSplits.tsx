@@ -1,11 +1,16 @@
+"use client";
+
 import type { Split } from "@/types/pace";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "@/lib/i18n/LanguageContext";
 
 interface PaceSplitsProps {
   splits: Split[];
 }
 
 export default function PaceSplits({ splits }: PaceSplitsProps) {
+  const { t } = useTranslations();
+
   if (splits.length === 0) return null;
 
   return (
@@ -18,9 +23,15 @@ export default function PaceSplits({ splits }: PaceSplitsProps) {
       <table className="w-full text-sm">
         <thead className="sticky top-0 bg-muted">
           <tr>
-            <th className="px-4 py-2 text-left font-medium text-muted-foreground w-16">#</th>
-            <th className="px-4 py-2 text-right font-medium text-muted-foreground">Split</th>
-            <th className="px-4 py-2 text-right font-medium text-muted-foreground">Cumulativo</th>
+            <th className="px-4 py-2 text-left font-medium text-muted-foreground w-16">
+              {t.pace.splitsColN}
+            </th>
+            <th className="px-4 py-2 text-right font-medium text-muted-foreground">
+              {t.pace.splitsColSplit}
+            </th>
+            <th className="px-4 py-2 text-right font-medium text-muted-foreground">
+              {t.pace.splitsColCumulative}
+            </th>
           </tr>
         </thead>
         <tbody>

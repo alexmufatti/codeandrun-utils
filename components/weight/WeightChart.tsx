@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
+import { useTranslations } from "@/lib/i18n/LanguageContext";
 import type { PeriodDays } from "@/types/weight";
 
 interface ChartDataPoint {
@@ -23,12 +24,6 @@ interface WeightChartProps {
   period: PeriodDays;
   onPeriodChange: (p: PeriodDays) => void;
 }
-
-const PERIODS: { label: string; value: PeriodDays }[] = [
-  { label: "30 giorni", value: 30 },
-  { label: "90 giorni", value: 90 },
-  { label: "365 giorni", value: 365 },
-];
 
 function formatDate(dateStr: string): string {
   const [year, month, day] = dateStr.split("-");
@@ -54,17 +49,21 @@ export default function WeightChart({
   period,
   onPeriodChange,
 }: WeightChartProps) {
+  const { t } = useTranslations();
+
+  const PERIODS: { label: string; value: PeriodDays }[] = [
+    { label: t.weight.period30, value: 30 },
+    { label: t.weight.period90, value: 90 },
+    { label: t.weight.period365, value: 365 },
+  ];
+
   const weights = data.map((d) => d.weightKg);
   const minW = weights.length ? Math.min(...weights) : 50;
   const maxW = weights.length ? Math.max(...weights) : 100;
   const padding = 2;
 
-  const yMin = Math.floor(
-    Math.min(minW, targetWeightKg ?? minW) - padding
-  );
-  const yMax = Math.ceil(
-    Math.max(maxW, targetWeightKg ?? maxW) + padding
-  );
+  const yMin = Math.floor(Math.min(minW, targetWeightKg ?? minW) - padding);
+  const yMax = Math.ceil(Math.max(maxW, targetWeightKg ?? maxW) + padding);
 
   return (
     <div className="flex flex-col gap-4">
@@ -87,7 +86,7 @@ export default function WeightChart({
 
       {data.length === 0 ? (
         <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">
-          Nessun dato nel periodo selezionato
+          {t.weight.chartNoData}
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={300}>
@@ -114,7 +113,7 @@ export default function WeightChart({
                 stroke="var(--chart-2)"
                 strokeDasharray="6 3"
                 label={{
-                  value: `Target: ${targetWeightKg} kg`,
+                  value: `${t.weight.chartTarget}: ${targetWeightKg} kg`,
                   position: "insideTopRight",
                   fontSize: 11,
                   fill: "var(--chart-2)",

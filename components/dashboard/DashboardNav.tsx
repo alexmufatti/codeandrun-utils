@@ -3,14 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-
-const NAV_LINKS = [
-  { href: "/dashboard/weight", label: "Weight Tracker" },
-  { href: "/dashboard/pace", label: "Race Planner" },
-];
+import { useTranslations } from "@/lib/i18n/LanguageContext";
 
 export default function DashboardNav() {
   const pathname = usePathname();
+  const { t } = useTranslations();
+
+  const NAV_LINKS = [
+    { href: "/dashboard/weight", label: t.nav.weightTracker },
+    { href: "/dashboard/pace", label: t.nav.racePlanner },
+  ];
 
   return (
     <nav className="flex items-center gap-1">

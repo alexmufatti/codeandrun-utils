@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTranslations } from "@/lib/i18n/LanguageContext";
 
 interface WeightFormProps {
   onSuccess: () => void;
@@ -19,6 +20,7 @@ function toLocalDateString(date: Date): string {
 }
 
 export default function WeightForm({ onSuccess }: WeightFormProps) {
+  const { t } = useTranslations();
   const [date, setDate] = useState(toLocalDateString(new Date()));
   const [weight, setWeight] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,12 +32,12 @@ export default function WeightForm({ onSuccess }: WeightFormProps) {
 
     const weightKg = parseFloat(weight);
     if (isNaN(weightKg) || weightKg < 30 || weightKg > 300) {
-      toast.error("Inserisci un peso valido tra 30 e 300 kg");
+      toast.error(t.weight.validWeight);
       return;
     }
 
     if (date > today) {
-      toast.error("La data non può essere futura");
+      toast.error(t.weight.validDate);
       return;
     }
 
@@ -49,14 +51,14 @@ export default function WeightForm({ onSuccess }: WeightFormProps) {
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error ?? "Errore durante il salvataggio");
+        throw new Error(err.error ?? t.weight.saveError);
       }
 
-      toast.success("Peso salvato con successo!");
+      toast.success(t.weight.saveSuccess);
       setWeight("");
       onSuccess();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Errore imprevisto");
+      toast.error(err instanceof Error ? err.message : t.weight.unexpectedError);
     } finally {
       setLoading(false);
     }
@@ -65,13 +67,13 @@ export default function WeightForm({ onSuccess }: WeightFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Inserisci peso</CardTitle>
+        <CardTitle>{t.weight.formTitle}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="date">Data</Label>
+              <Label htmlFor="date">{t.weight.dateLabel}</Label>
               <Input
                 id="date"
                 type="date"
@@ -82,14 +84,14 @@ export default function WeightForm({ onSuccess }: WeightFormProps) {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="weight">Peso (kg)</Label>
+              <Label htmlFor="weight">{t.weight.weightLabel}</Label>
               <Input
                 id="weight"
                 type="number"
                 step="0.1"
                 min="30"
                 max="300"
-                placeholder="es. 72.5"
+                placeholder={t.weight.weightPlaceholder}
                 value={weight}
                 onChange={(e) => setWeight(e.target.value)}
                 required
@@ -97,7 +99,7 @@ export default function WeightForm({ onSuccess }: WeightFormProps) {
             </div>
           </div>
           <Button type="submit" disabled={loading} className="w-full">
-            {loading ? "Salvataggio..." : "Salva"}
+            {loading ? t.weight.savingBtn : t.weight.saveBtn}
           </Button>
         </form>
       </CardContent>

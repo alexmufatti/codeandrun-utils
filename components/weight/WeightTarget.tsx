@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTranslations } from "@/lib/i18n/LanguageContext";
 
 interface WeightTargetProps {
   currentTarget: number | null;
@@ -16,6 +17,7 @@ export default function WeightTarget({
   currentTarget,
   onSuccess,
 }: WeightTargetProps) {
+  const { t } = useTranslations();
   const [value, setValue] = useState(
     currentTarget !== null ? String(currentTarget) : ""
   );
@@ -30,7 +32,7 @@ export default function WeightTarget({
       targetWeightKg !== null &&
       (isNaN(targetWeightKg) || targetWeightKg < 30 || targetWeightKg > 300)
     ) {
-      toast.error("Inserisci un peso target valido tra 30 e 300 kg");
+      toast.error(t.weight.targetValidation);
       return;
     }
 
@@ -44,13 +46,13 @@ export default function WeightTarget({
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error ?? "Errore durante il salvataggio");
+        throw new Error(err.error ?? t.weight.targetError);
       }
 
-      toast.success("Peso target aggiornato!");
+      toast.success(t.weight.targetSuccess);
       onSuccess(targetWeightKg);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Errore imprevisto");
+      toast.error(err instanceof Error ? err.message : t.weight.unexpectedError);
     } finally {
       setLoading(false);
     }
@@ -59,32 +61,32 @@ export default function WeightTarget({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Peso obiettivo</CardTitle>
+        <CardTitle>{t.weight.targetTitle}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="flex gap-3">
           <div className="flex flex-col gap-1.5 flex-1">
-            <Label htmlFor="target">Target (kg)</Label>
+            <Label htmlFor="target">{t.weight.targetLabel}</Label>
             <Input
               id="target"
               type="number"
               step="0.1"
               min="30"
               max="300"
-              placeholder="es. 70.0"
+              placeholder={t.weight.targetPlaceholder}
               value={value}
               onChange={(e) => setValue(e.target.value)}
             />
           </div>
           <div className="flex items-end">
             <Button type="submit" disabled={loading}>
-              {loading ? "Salvataggio..." : "Imposta"}
+              {loading ? t.weight.savingBtn : t.weight.targetSetBtn}
             </Button>
           </div>
         </form>
         {currentTarget !== null && (
           <p className="text-sm text-muted-foreground mt-2">
-            Target attuale: <strong>{currentTarget} kg</strong>
+            {t.weight.targetCurrent}: <strong>{currentTarget} kg</strong>
           </p>
         )}
       </CardContent>

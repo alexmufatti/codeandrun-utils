@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { calculateSegments, formatTime, formatPace } from "@/lib/pace/calculations";
 import { cn } from "@/lib/utils";
+import { useTranslations, interpolate } from "@/lib/i18n/LanguageContext";
 import type { Segment } from "@/types/pace";
 
 const PRESET_DISTANCES = [
@@ -27,6 +28,7 @@ function makeSegment(): Segment {
 }
 
 export default function RaceSegments() {
+  const { t } = useTranslations();
   const [totalRaceKm, setTotalRaceKm] = useState("");
   const [segments, setSegments] = useState<Segment[]>([makeSegment(), makeSegment()]);
 
@@ -50,7 +52,6 @@ export default function RaceSegments() {
     setSegments((prev) => prev.filter((s) => s.id !== id));
   }
 
-  // Compute rest distance: total - sum of non-rest segments
   const totalKm = parseFloat(totalRaceKm);
   const otherDists = segments
     .filter((s) => !s.isRest)
@@ -60,7 +61,6 @@ export default function RaceSegments() {
     }, 0);
   const restDistKm = isFinite(totalKm) && totalKm > 0 ? totalKm - otherDists : NaN;
 
-  // Pass effective segments to calculator (rest segment with computed distance)
   const effectiveSegments = segments.map((s) =>
     s.isRest
       ? { ...s, distanceKm: isFinite(restDistKm) && restDistKm > 0 ? String(restDistKm) : "" }
@@ -71,13 +71,13 @@ export default function RaceSegments() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Pianificatore Segmenti</CardTitle>
+        <CardTitle>{t.pace.segmentsTitle}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {/* Total race distance */}
         <div className="flex flex-col gap-2 pb-3 border-b border-border">
           <div className="flex items-center gap-3">
-            <Label className="whitespace-nowrap shrink-0">Distanza gara</Label>
+            <Label className="whitespace-nowrap shrink-0">{t.pace.raceDistance}</Label>
             <Input
               className="w-36"
               placeholder="es. 42.195"
@@ -108,9 +108,9 @@ export default function RaceSegments() {
 
         {/* Column headers */}
         <div className="hidden sm:grid grid-cols-[1fr_160px_120px_36px] gap-2 px-1">
-          <Label className="text-xs text-muted-foreground">Tratto</Label>
-          <Label className="text-xs text-muted-foreground">Distanza (km)</Label>
-          <Label className="text-xs text-muted-foreground">Passo (MM:SS)</Label>
+          <Label className="text-xs text-muted-foreground">{t.pace.segmentLabelCol}</Label>
+          <Label className="text-xs text-muted-foreground">{t.pace.segmentDistanceCol}</Label>
+          <Label className="text-xs text-muted-foreground">{t.pace.segmentPaceCol}</Label>
           <span />
         </div>
 
@@ -125,19 +125,21 @@ export default function RaceSegments() {
               key={seg.id}
               className="grid grid-cols-1 sm:grid-cols-[1fr_160px_120px_36px] gap-2 items-end"
             >
-              {/* Label */}
               <div className="flex flex-col gap-1">
-                <Label className="sm:hidden text-xs text-muted-foreground">Tratto</Label>
+                <Label className="sm:hidden text-xs text-muted-foreground">
+                  {t.pace.segmentLabelCol}
+                </Label>
                 <Input
-                  placeholder={`Segmento ${i + 1}`}
+                  placeholder={interpolate(t.pace.segmentPlaceholder, { n: i + 1 })}
                   value={seg.label}
                   onChange={(e) => update(seg.id, "label", e.target.value)}
                 />
               </div>
 
-              {/* Distance + Resto toggle */}
               <div className="flex flex-col gap-1">
-                <Label className="sm:hidden text-xs text-muted-foreground">Distanza (km)</Label>
+                <Label className="sm:hidden text-xs text-muted-foreground">
+                  {t.pace.segmentDistanceCol}
+                </Label>
                 <div className="flex gap-1.5 items-center">
                   {isRest ? (
                     <div
@@ -153,14 +155,14 @@ export default function RaceSegments() {
                   ) : (
                     <Input
                       className="flex-1"
-                      placeholder="es. 10"
+                      placeholder={t.pace.distancePlaceholder}
                       value={seg.distanceKm}
                       onChange={(e) => update(seg.id, "distanceKm", e.target.value)}
                     />
                   )}
                   <button
                     onClick={() => toggleRest(seg.id)}
-                    title="Imposta come resto della distanza totale"
+                    title={t.pace.segmentRest}
                     className={cn(
                       "shrink-0 rounded px-2 h-9 text-xs font-medium border transition-colors",
                       isRest
@@ -168,30 +170,30 @@ export default function RaceSegments() {
                         : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
                     )}
                   >
-                    Resto
+                    {t.pace.segmentRest}
                   </button>
                 </div>
               </div>
 
-              {/* Pace */}
               <div className="flex flex-col gap-1">
-                <Label className="sm:hidden text-xs text-muted-foreground">Passo (MM:SS)</Label>
+                <Label className="sm:hidden text-xs text-muted-foreground">
+                  {t.pace.segmentPaceCol}
+                </Label>
                 <Input
-                  placeholder="es. 5:00"
+                  placeholder={t.pace.pacePlaceholder}
                   value={seg.paceInput}
                   onChange={(e) => update(seg.id, "paceInput", e.target.value)}
                   className="font-mono"
                 />
               </div>
 
-              {/* Remove */}
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => removeSegment(seg.id)}
                 disabled={segments.length <= 1}
                 className="text-muted-foreground hover:text-destructive"
-                aria-label="Rimuovi segmento"
+                aria-label={t.pace.removeSegment}
               >
                 ×
               </Button>
@@ -199,24 +201,22 @@ export default function RaceSegments() {
           );
         })}
 
-        {/* Add button */}
         <Button variant="outline" size="sm" onClick={addSegment} className="self-start">
-          + Aggiungi segmento
+          {t.pace.addSegment}
         </Button>
 
-        {/* Summary */}
         {totals && (
           <div className="rounded-lg bg-muted px-4 py-3 grid grid-cols-3 gap-4 text-sm">
             <div className="flex flex-col gap-0.5">
-              <span className="text-xs text-muted-foreground">Distanza totale</span>
+              <span className="text-xs text-muted-foreground">{t.pace.totalDistance}</span>
               <span className="font-semibold">{totals.totalDistKm.toFixed(3)} km</span>
             </div>
             <div className="flex flex-col gap-0.5">
-              <span className="text-xs text-muted-foreground">Tempo totale</span>
+              <span className="text-xs text-muted-foreground">{t.pace.totalTime}</span>
               <span className="font-semibold font-mono">{formatTime(totals.totalTimeSec)}</span>
             </div>
             <div className="flex flex-col gap-0.5">
-              <span className="text-xs text-muted-foreground">Passo medio</span>
+              <span className="text-xs text-muted-foreground">{t.pace.avgPace}</span>
               <span className="font-semibold font-mono">{formatPace(totals.avgPaceSec)} /km</span>
             </div>
           </div>
