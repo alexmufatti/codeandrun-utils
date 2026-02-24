@@ -1,5 +1,6 @@
 import DashboardNav from "@/components/dashboard/DashboardNav";
 import LoginButton from "@/components/auth/LoginButton";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export default function DashboardLayout({
   children,
@@ -15,7 +16,10 @@ export default function DashboardLayout({
             <span className="text-lg font-semibold whitespace-nowrap">CodeAndRun</span>
             <DashboardNav />
           </div>
-          <LoginButton />
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <LoginButton />
+          </div>
         </div>
       </header>
       {children}
