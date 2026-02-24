@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # ── Configurazione ──────────────────────────────────────────────────────────
-SERVER_USER="user"
-SERVER_HOST="your-server-ip"
-SERVER_DIR="/opt/codeandrun"   # cartella sul server con .env.local e docker-compose.yml
+SERVER_USER="mua"
+SERVER_HOST="timmy.pistulinux"
+SERVER_DIR="/data/utils"   # cartella sul server con .env.local e docker-compose.yml
 IMAGE_NAME="codeandrun-web"
 IMAGE_TAG="latest"
 # ────────────────────────────────────────────────────────────────────────────

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import LoginButton from "@/components/auth/LoginButton";
 import WeightForm from "@/components/weight/WeightForm";
 import WeightChart from "@/components/weight/WeightChart";
 import WeightStats from "@/components/weight/WeightStats";
@@ -47,21 +46,7 @@ export default function WeightDashboardPage() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🏃</span>
-            <h1 className="text-lg font-semibold">CodeAndRun</h1>
-            <span className="text-muted-foreground text-sm hidden sm:inline">
-              / Weight Tracker
-            </span>
-          </div>
-          <LoginButton />
-        </div>
-      </header>
-
+    <>
       {/* Main content */}
       <main className="max-w-5xl mx-auto px-4 py-8 flex flex-col gap-6">
         {/* Stats row */}
@@ -98,6 +83,6 @@ export default function WeightDashboardPage() {
         {/* CSV Import */}
         <WeightImport onSuccess={fetchData} />
       </main>
-    </div>
+    </>
   );
 }
