@@ -42,7 +42,7 @@ export default function WeightForm({ onSuccess }: WeightFormProps) {
       return;
     }
 
-    if (date > today) {
+    if (date > toLocalDateString(new Date())) {
       toast.error(t.weight.validDate);
       return;
     }
