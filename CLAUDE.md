@@ -66,7 +66,7 @@ Pace and VDOT features are client-only (no API/DB). Weight tracker has API route
 - `next.config.ts` has `output: "standalone"` for Docker
 - `deploy.sh` builds `--platform linux/amd64`, pipes image via SSH (`docker save | gzip | ssh | docker load`), then `docker compose up -d`
 - Server: `/data/utils/` contains `docker-compose.yml` and `.env.local`
-- Production: `utils.codeandrun.it` → reverse proxy → port 3002 → container port 3000
+- Production: `apps.codeandrun.it` → reverse proxy → port 3002 → container port 3000
 
 ### Required Environment Variables
 
