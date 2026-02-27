@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,14 +24,7 @@ export default function WeightForm({ onSuccess }: WeightFormProps) {
   const [date, setDate] = useState(toLocalDateString(new Date()));
   const [weight, setWeight] = useState("");
   const [loading, setLoading] = useState(false);
-  const [today, setToday] = useState(() => toLocalDateString(new Date()));
-
-  useEffect(() => {
-    const update = () => setToday(toLocalDateString(new Date()));
-    update(); // corregge eventuale mismatch SSR/client
-    window.addEventListener("focus", update);
-    return () => window.removeEventListener("focus", update);
-  }, []);
+  const [today] = useState(() => toLocalDateString(new Date()));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
