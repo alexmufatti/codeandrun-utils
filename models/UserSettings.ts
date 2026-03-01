@@ -3,6 +3,11 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 export interface IUserSettings extends Document {
   userId: string;
   targetWeightKg: number | null;
+  vdotDistanceM: number | null;
+  vdotTimeInput: string | null;
+  hrMaxBpm: number | null;
+  hrRestingBpm: number | null;
+  hrZoneMethod: string | null;
   updatedAt: Date;
 }
 
@@ -10,6 +15,11 @@ const UserSettingsSchema = new Schema<IUserSettings>(
   {
     userId: { type: String, required: true, unique: true },
     targetWeightKg: { type: Number, default: null },
+    vdotDistanceM: { type: Number, default: null },
+    vdotTimeInput: { type: String, default: null },
+    hrMaxBpm: { type: Number, default: null },
+    hrRestingBpm: { type: Number, default: null },
+    hrZoneMethod: { type: String, default: null },
     updatedAt: { type: Date, default: Date.now },
   },
   { versionKey: false }

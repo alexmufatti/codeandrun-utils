@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,10 +11,9 @@ import {
   calculateZones,
   predictRaceTimes,
   formatPaceSec,
-  formatTotalTime,
 } from "@/lib/vdot/calculations";
 import { parseTime } from "@/lib/pace/calculations";
-import type { TrainingZone } from "@/types/vdot";
+import type { TrainingZone, RacePrediction } from "@/types/vdot";
 
 const PRESET_DISTANCES = [
   { label: "5K",       value: "5",       distanceM: 5000 },
@@ -36,6 +35,11 @@ export default function VdotCalculator() {
   const [distanceM, setDistanceM] = useState(5000);
   const [distanceLabel, setDistanceLabel] = useState("5K");
   const [timeInput, setTimeInput] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const [vdot, setVdot] = useState<number | null>(null);
+  const [zones, setZones] = useState<TrainingZone[] | null>(null);
+  const [predictions, setPredictions] = useState<RacePrediction[] | null>(null);
 
   const ZONE_META: Record<TrainingZone["id"], { name: string; desc: string; intensity: string }> = {
     E: { name: t.vdot.zoneE, desc: t.vdot.descE, intensity: t.vdot.intensityE },
@@ -45,20 +49,68 @@ export default function VdotCalculator() {
     R: { name: t.vdot.zoneR, desc: t.vdot.descR, intensity: t.vdot.intensityR },
   };
 
-  const vdot = useMemo(() => {
-    const timeSec = parseTime(timeInput);
-    if (!isFinite(timeSec) || timeSec <= 0) return null;
-    const v = calculateVdot(distanceM, timeSec / 60);
-    return isFinite(v) && v > 0 ? v : null;
-  }, [distanceM, timeInput]);
-
-  const zones = useMemo(() => (vdot ? calculateZones(vdot) : null), [vdot]);
-  const predictions = useMemo(() => (vdot ? predictRaceTimes(vdot) : null), [vdot]);
+  // Load saved settings on mount
+  useEffect(() => {
+    fetch("/api/vdot/settings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.vdotDistanceM) {
+          const preset = PRESET_DISTANCES.find(
+            (p) => p.distanceM === data.vdotDistanceM
+          );
+          if (preset) {
+            setDistanceM(preset.distanceM);
+            setDistanceLabel(preset.label);
+          }
+        }
+        if (data?.vdotTimeInput) {
+          setTimeInput(data.vdotTimeInput);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   function selectPreset(preset: typeof PRESET_DISTANCES[number]) {
     setDistanceM(preset.distanceM);
     setDistanceLabel(preset.label);
+    // Reset results when inputs change
+    setVdot(null);
+    setZones(null);
+    setPredictions(null);
   }
+
+  function handleTimeChange(value: string) {
+    setTimeInput(value);
+    // Reset results when inputs change
+    setVdot(null);
+    setZones(null);
+    setPredictions(null);
+  }
+
+  async function handleCalculate() {
+    const timeSec = parseTime(timeInput);
+    if (!isFinite(timeSec) || timeSec <= 0) return;
+    const v = calculateVdot(distanceM, timeSec / 60);
+    if (!isFinite(v) || v <= 0) return;
+
+    setVdot(v);
+    setZones(calculateZones(v));
+    setPredictions(predictRaceTimes(v));
+
+    setSaving(true);
+    try {
+      await fetch("/api/vdot/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vdotDistanceM: distanceM, vdotTimeInput: timeInput }),
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const timeSec = parseTime(timeInput);
+  const canCalculate = isFinite(timeSec) && timeSec > 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -94,10 +146,24 @@ export default function VdotCalculator() {
             <Input
               placeholder={t.vdot.raceTimePlaceholder}
               value={timeInput}
-              onChange={(e) => setTimeInput(e.target.value)}
+              onChange={(e) => handleTimeChange(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && canCalculate && handleCalculate()}
               className="font-mono"
             />
           </div>
+
+          <button
+            onClick={handleCalculate}
+            disabled={!canCalculate || saving}
+            className={cn(
+              "self-start rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+              canCalculate && !saving
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "bg-muted text-muted-foreground cursor-not-allowed"
+            )}
+          >
+            {saving ? t.vdot.calculatingBtn : t.vdot.calculateBtn}
+          </button>
         </CardContent>
       </Card>
 

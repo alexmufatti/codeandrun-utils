@@ -13,6 +13,7 @@ export default function DashboardNav() {
     { href: "/dashboard/weight", label: t.nav.weightTracker },
     { href: "/dashboard/pace", label: t.nav.racePlanner },
     { href: "/dashboard/vdot", label: t.nav.trainingZones },
+    { href: "/dashboard/hr", label: t.nav.hrZones },
   ];
 
   return (
