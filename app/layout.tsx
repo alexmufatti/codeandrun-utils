@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "next-themes";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
@@ -39,6 +40,11 @@ export default function RootLayout({
             </SessionProvider>
           </LanguageProvider>
         </ThemeProvider>
+        <Script
+          src="https://analytics.alexmufatti.it/script.js"
+          data-website-id="4afb9f77-1f8a-40ec-ac15-1b007bd009a7"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
