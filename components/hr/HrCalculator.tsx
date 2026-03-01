@@ -94,6 +94,9 @@ export default function HrCalculator() {
         if (data.hrZonePercents && Array.isArray(data.hrZonePercents) && data.hrZonePercents.length === 5) {
           setZonePercents(data.hrZonePercents);
         }
+        if (data.hrZones && Array.isArray(data.hrZones) && data.hrZones.length === 5) {
+          setZones(data.hrZones as HrZone[]);
+        }
       })
       .catch(() => {});
   }, []);
@@ -155,6 +158,7 @@ export default function HrCalculator() {
           hrAge: hrSource === "formula" && Number.isFinite(ageNum) ? ageNum : null,
           hrFormula: hrSource === "formula" ? formula : null,
           hrZonePercents: zonePercents,
+          hrZones: computed,
         }),
       });
     } finally {

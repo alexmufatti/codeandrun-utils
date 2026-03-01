@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import UserSettings from "@/models/UserSettings";
-import type { ZonePercent } from "@/types/hr";
+import type { ZonePercent, HrZone } from "@/types/hr";
+
+function parseJson<T>(raw: string | null | undefined): T | null {
+  if (!raw) return null;
+  try { return JSON.parse(raw) as T; } catch { return null; }
+}
 
 export async function GET() {
   const session = await auth();
@@ -16,15 +21,6 @@ export async function GET() {
     userId: session.user.id,
   }).lean();
 
-  let hrZonePercents: ZonePercent[] | null = null;
-  if (settings?.hrZonePercents) {
-    try {
-      hrZonePercents = JSON.parse(settings.hrZonePercents);
-    } catch {
-      hrZonePercents = null;
-    }
-  }
-
   return NextResponse.json({
     hrMaxBpm: settings?.hrMaxBpm ?? null,
     hrRestingBpm: settings?.hrRestingBpm ?? null,
@@ -32,7 +28,8 @@ export async function GET() {
     hrSource: settings?.hrSource ?? null,
     hrAge: settings?.hrAge ?? null,
     hrFormula: settings?.hrFormula ?? null,
-    hrZonePercents,
+    hrZonePercents: parseJson<ZonePercent[]>(settings?.hrZonePercents),
+    hrZones: parseJson<HrZone[]>(settings?.hrZones),
   });
 }
 
@@ -43,7 +40,7 @@ export async function PUT(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { hrMaxBpm, hrRestingBpm, hrZoneMethod, hrSource, hrAge, hrFormula, hrZonePercents } = body;
+  const { hrMaxBpm, hrRestingBpm, hrZoneMethod, hrSource, hrAge, hrFormula, hrZonePercents, hrZones } = body;
 
   if (
     hrMaxBpm !== null &&
@@ -97,6 +94,14 @@ export async function PUT(req: NextRequest) {
     hrZonePercentsStr = JSON.stringify(hrZonePercents);
   }
 
+  let hrZonesStr: string | null = null;
+  if (hrZones !== null && hrZones !== undefined) {
+    if (!Array.isArray(hrZones) || hrZones.length !== 5) {
+      return NextResponse.json({ error: "Invalid hrZones" }, { status: 400 });
+    }
+    hrZonesStr = JSON.stringify(hrZones);
+  }
+
   await connectDB();
 
   await UserSettings.findOneAndUpdate(
@@ -110,18 +115,11 @@ export async function PUT(req: NextRequest) {
       hrAge,
       hrFormula,
       hrZonePercents: hrZonePercentsStr,
+      hrZones: hrZonesStr,
       updatedAt: new Date(),
     },
     { upsert: true, new: true }
   ).lean();
 
-  return NextResponse.json({
-    hrMaxBpm,
-    hrRestingBpm,
-    hrZoneMethod,
-    hrSource,
-    hrAge,
-    hrFormula,
-    hrZonePercents,
-  });
+  return NextResponse.json({ ok: true });
 }
