@@ -113,6 +113,29 @@ export function generateSplits(
   return splits;
 }
 
+/** "HH:MM" → minutes from midnight, returns NaN if invalid */
+export function parseStartTime(str: string): number {
+  const parts = str.trim().split(":");
+  if (parts.length !== 2) return NaN;
+  const [h, m] = parts.map(Number);
+  if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m >= 60) return NaN;
+  return h * 60 + m;
+}
+
+/** startMinutes + distance + pace → "HH:MM" wall-clock time */
+export function calculatePassageTime(
+  startMinutes: number,
+  distKm: number,
+  paceSecPerKm: number
+): string {
+  if (!isFinite(startMinutes) || !isFinite(distKm) || !isFinite(paceSecPerKm)) return "—";
+  const elapsedMin = (distKm * paceSecPerKm) / 60;
+  const totalMin = Math.round(startMinutes + elapsedMin) % (24 * 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 /** Aggregate segment list → totals + average pace */
 export function calculateSegments(
   segments: { distanceKm: string; paceInput: string }[]
