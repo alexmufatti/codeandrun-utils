@@ -36,7 +36,7 @@ function CustomTooltip({ active, payload, label }: any) {
     return (
       <div className="bg-background border border-border rounded-lg p-3 shadow-md text-sm">
         <p className="font-medium">{formatDate(label)}</p>
-        <p className="text-primary">{payload[0].value} kg</p>
+        <p className="text-[var(--run-accent)] font-semibold">{payload[0].value} kg</p>
       </div>
     );
   }
@@ -68,15 +68,15 @@ export default function WeightChart({
   return (
     <div className="flex flex-col gap-4">
       {/* Period selector */}
-      <div className="flex gap-2">
+      <div className="flex gap-1.5">
         {PERIODS.map((p) => (
           <button
             key={p.value}
             onClick={() => onPeriodChange(p.value)}
-            className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+            className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
               period === p.value
-                ? "bg-primary text-primary-foreground border-primary"
-                : "border-border hover:bg-muted"
+                ? "bg-[var(--run-accent)] text-white border-[var(--run-accent)]"
+                : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
             }`}
           >
             {p.label}
@@ -123,10 +123,10 @@ export default function WeightChart({
             <Line
               type="monotone"
               dataKey="weightKg"
-              stroke="var(--chart-1)"
+              stroke="var(--run-accent)"
               strokeWidth={2}
-              dot={{ r: 3, fill: "var(--chart-1)" }}
-              activeDot={{ r: 5 }}
+              dot={{ r: 3, fill: "var(--run-accent)" }}
+              activeDot={{ r: 5, fill: "var(--run-accent)" }}
               connectNulls
             />
           </LineChart>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { useTranslations } from "@/lib/i18n/LanguageContext";
 import { cn } from "@/lib/utils";
 import {
@@ -49,23 +50,15 @@ export default function VdotCalculator() {
     R: { name: t.vdot.zoneR, desc: t.vdot.descR, intensity: t.vdot.intensityR },
   };
 
-  // Load saved settings on mount
   useEffect(() => {
     fetch("/api/vdot/settings")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.vdotDistanceM) {
-          const preset = PRESET_DISTANCES.find(
-            (p) => p.distanceM === data.vdotDistanceM
-          );
-          if (preset) {
-            setDistanceM(preset.distanceM);
-            setDistanceLabel(preset.label);
-          }
+          const preset = PRESET_DISTANCES.find((p) => p.distanceM === data.vdotDistanceM);
+          if (preset) { setDistanceM(preset.distanceM); setDistanceLabel(preset.label); }
         }
-        if (data?.vdotTimeInput) {
-          setTimeInput(data.vdotTimeInput);
-        }
+        if (data?.vdotTimeInput) setTimeInput(data.vdotTimeInput);
       })
       .catch(() => {});
   }, []);
@@ -73,18 +66,12 @@ export default function VdotCalculator() {
   function selectPreset(preset: typeof PRESET_DISTANCES[number]) {
     setDistanceM(preset.distanceM);
     setDistanceLabel(preset.label);
-    // Reset results when inputs change
-    setVdot(null);
-    setZones(null);
-    setPredictions(null);
+    setVdot(null); setZones(null); setPredictions(null);
   }
 
   function handleTimeChange(value: string) {
     setTimeInput(value);
-    // Reset results when inputs change
-    setVdot(null);
-    setZones(null);
-    setPredictions(null);
+    setVdot(null); setZones(null); setPredictions(null);
   }
 
   async function handleCalculate() {
@@ -115,23 +102,26 @@ export default function VdotCalculator() {
   return (
     <div className="flex flex-col gap-6">
       {/* Input card */}
-      <Card>
+      <Card className="overflow-hidden">
+        <div className="h-[3px] bg-[var(--run-accent)]" />
         <CardHeader>
           <CardTitle>{t.vdot.pageTitle}</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">{t.vdot.pageSubtitle}</p>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
+        <CardContent className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
-            <Label>{t.vdot.referenceRace}</Label>
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              {t.vdot.referenceRace}
+            </Label>
             <div className="flex flex-wrap gap-1.5">
               {PRESET_DISTANCES.map((p) => (
                 <button
                   key={p.value}
                   onClick={() => selectPreset(p)}
                   className={cn(
-                    "rounded-full px-3 py-1 text-xs font-medium border transition-colors",
+                    "rounded-full px-3 py-1 text-xs font-semibold border transition-colors",
                     distanceLabel === p.label
-                      ? "bg-primary text-primary-foreground border-primary"
+                      ? "bg-[var(--run-accent)] text-white border-[var(--run-accent)]"
                       : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
                   )}
                 >
@@ -142,48 +132,51 @@ export default function VdotCalculator() {
           </div>
 
           <div className="flex flex-col gap-1.5 max-w-xs">
-            <Label>{t.vdot.raceTime}</Label>
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              {t.vdot.raceTime}
+            </Label>
             <Input
               placeholder={t.vdot.raceTimePlaceholder}
               value={timeInput}
               onChange={(e) => handleTimeChange(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && canCalculate && handleCalculate()}
-              className="font-mono"
+              className="font-mono h-10"
             />
           </div>
 
-          <button
+          <Button
             onClick={handleCalculate}
             disabled={!canCalculate || saving}
             className={cn(
-              "self-start rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+              "self-start transition-colors",
               canCalculate && !saving
-                ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                : "bg-muted text-muted-foreground cursor-not-allowed"
+                ? "bg-[var(--run-accent)] hover:bg-[var(--run-accent)]/90 border-[var(--run-accent)] text-white"
+                : ""
             )}
           >
             {saving ? t.vdot.calculatingBtn : t.vdot.calculateBtn}
-          </button>
+          </Button>
         </CardContent>
       </Card>
 
       {/* Results */}
       {vdot && zones && predictions && (
         <>
-          {/* VDOT badge */}
+          {/* VDOT readout */}
           <div className="flex items-center gap-4">
-            <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card px-6 py-4 shadow-sm">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">
+            <div className="flex flex-col items-center justify-center rounded-xl border-2 border-[var(--run-accent)] bg-[var(--run-accent-muted)] px-8 py-4">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 {t.vdot.yourVdot}
               </span>
-              <span className="text-4xl font-bold tabular-nums mt-1">
+              <span className="text-5xl font-bold font-mono tabular-nums text-[var(--run-accent)] mt-1">
                 {vdot.toFixed(1)}
               </span>
             </div>
           </div>
 
-          {/* Training zones table */}
-          <Card>
+          {/* Training zones */}
+          <Card className="overflow-hidden">
+            <div className="h-[3px] bg-[var(--run-accent)]" />
             <CardHeader>
               <CardTitle>{t.vdot.trainingZones}</CardTitle>
             </CardHeader>
@@ -192,24 +185,22 @@ export default function VdotCalculator() {
                 <table className="w-full text-sm">
                   <thead className="bg-muted">
                     <tr>
-                      <th className="px-4 py-3 text-left font-medium text-muted-foreground w-12">{t.vdot.zone}</th>
-                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t.vdot.description}</th>
-                      <th className="px-4 py-3 text-right font-medium text-muted-foreground">{t.vdot.pace}</th>
-                      <th className="px-4 py-3 text-right font-medium text-muted-foreground hidden sm:table-cell">{t.vdot.intensity}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-12">{t.vdot.zone}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.vdot.description}</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.vdot.pace}</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">{t.vdot.intensity}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {zones.map((zone) => {
+                    {zones.map((zone, i) => {
                       const meta = ZONE_META[zone.id];
                       const colorClass = ZONE_COLORS[zone.id];
-
                       const paceDisplay =
                         zone.paceRangeMinSec && zone.paceRangeMaxSec
                           ? `${formatPaceSec(zone.paceRangeMinSec)} – ${formatPaceSec(zone.paceRangeMaxSec)}`
                           : formatPaceSec(zone.paceSecPerKm);
-
                       return (
-                        <tr key={zone.id} className="border-t border-border">
+                        <tr key={zone.id} className={cn("border-t border-border", i % 2 === 1 && "bg-muted/20")}>
                           <td className="px-4 py-3">
                             <span className={cn("inline-flex items-center justify-center w-8 h-8 rounded-full border text-xs font-bold", colorClass)}>
                               {zone.id}
@@ -245,16 +236,17 @@ export default function VdotCalculator() {
           </Card>
 
           {/* Race predictions */}
-          <Card>
+          <Card className="overflow-hidden">
+            <div className="h-[3px] bg-[var(--run-accent)]" />
             <CardHeader>
               <CardTitle>{t.vdot.predictedTimes}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {predictions.map((p) => (
-                  <div key={p.label} className="flex flex-col items-center rounded-lg border border-border py-3 px-2 text-center">
-                    <span className="text-xs text-muted-foreground">{p.label}</span>
-                    <span className="font-mono font-semibold mt-1">{p.timeStr}</span>
+                  <div key={p.label} className="flex flex-col items-center rounded-lg border border-border py-3 px-2 text-center hover:border-[var(--run-accent)]/40 hover:bg-[var(--run-accent-muted)] transition-colors">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{p.label}</span>
+                    <span className="font-mono font-bold text-lg mt-1">{p.timeStr}</span>
                   </div>
                 ))}
               </div>

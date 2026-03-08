@@ -24,12 +24,13 @@ function StatCard({
   className?: string;
 }) {
   return (
-    <Card>
-      <CardContent className="pt-4">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+    <Card className="overflow-hidden">
+      <div className="h-[3px] bg-[var(--run-accent)]" />
+      <CardContent className="pt-3">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
           {label}
         </p>
-        <p className={`text-xl font-semibold ${className ?? ""}`}>
+        <p className={`text-xl font-bold font-mono ${className ?? ""}`}>
           {value ?? "—"}
         </p>
       </CardContent>

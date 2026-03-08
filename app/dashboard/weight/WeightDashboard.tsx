@@ -53,20 +53,23 @@ export default function WeightDashboard() {
         {!loading && <WeightStats stats={stats} />}
 
         {/* Chart */}
-        <div className="border border-border rounded-xl p-6">
-          <h2 className="text-base font-semibold mb-4">Andamento del peso</h2>
-          {loading ? (
-            <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">
-              Caricamento...
-            </div>
-          ) : (
-            <WeightChart
-              data={entries.map((e) => ({ date: e.date, weightKg: e.weightKg }))}
-              targetWeightKg={targetWeightKg}
-              period={period}
-              onPeriodChange={(p) => setPeriod(p)}
-            />
-          )}
+        <div className="overflow-hidden rounded-xl border border-border">
+          <div className="h-[3px] bg-[var(--run-accent)]" />
+          <div className="p-6">
+            <h2 className="text-base font-semibold mb-4">Andamento del peso</h2>
+            {loading ? (
+              <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">
+                Caricamento...
+              </div>
+            ) : (
+              <WeightChart
+                data={entries.map((e) => ({ date: e.date, weightKg: e.weightKg }))}
+                targetWeightKg={targetWeightKg}
+                period={period}
+                onPeriodChange={(p) => setPeriod(p)}
+              />
+            )}
+          </div>
         </div>
 
         {/* Forms row */}

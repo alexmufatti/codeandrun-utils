@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { useTranslations } from "@/lib/i18n/LanguageContext";
 import { cn } from "@/lib/utils";
 import { calcMaxHr, calculateZonesMhr, calculateZonesKarvonen } from "@/lib/hr/calculations";
@@ -27,7 +28,7 @@ const FORMULAS: { id: HrFormula; label: string; equation: string }[] = [
   { id: "nes",     label: "Nes",     equation: "211 − 0.64×età" },
 ];
 
-function ToggleBtn({
+function Chip({
   active,
   onClick,
   children,
@@ -40,9 +41,9 @@ function ToggleBtn({
     <button
       onClick={onClick}
       className={cn(
-        "rounded-full px-3 py-1 text-xs font-medium border transition-colors",
+        "rounded-full px-3 py-1 text-xs font-semibold border transition-colors",
         active
-          ? "bg-primary text-primary-foreground border-primary"
+          ? "bg-[var(--run-accent)] text-white border-[var(--run-accent)]"
           : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
       )}
     >
@@ -54,21 +55,15 @@ function ToggleBtn({
 export default function HrCalculator() {
   const { t } = useTranslations();
 
-  // FCMax source
   const [hrSource, setHrSource] = useState<HrSource>("manual");
   const [maxHr, setMaxHr] = useState("");
   const [age, setAge] = useState("");
   const [formula, setFormula] = useState<HrFormula>("fox");
-
-  // Zone method
   const [method, setMethod] = useState<Method>("max");
   const [restingHr, setRestingHr] = useState("");
-
-  // Zone percentages
   const [zonePercents, setZonePercents] = useState<ZonePercent[]>(
     DEFAULT_ZONE_PERCENTS.map((z) => ({ ...z }))
   );
-
   const [zones, setZones] = useState<HrZone[] | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -101,7 +96,6 @@ export default function HrCalculator() {
       .catch(() => {});
   }, []);
 
-  // Effective max HR
   const ageNum = parseInt(age, 10);
   const maxHrNum = parseInt(maxHr, 10);
   const computedMaxHr =
@@ -109,14 +103,11 @@ export default function HrCalculator() {
       ? calcMaxHr(ageNum, formula)
       : null;
   const effectiveMaxHr = hrSource === "manual" ? maxHrNum : (computedMaxHr ?? NaN);
-
   const restingHrNum = parseInt(restingHr, 10);
-
   const isMaxHrValid = Number.isFinite(effectiveMaxHr) && effectiveMaxHr > 0 && effectiveMaxHr <= 250;
   const isRestingHrValid =
     method === "max" ||
     (Number.isFinite(restingHrNum) && restingHrNum > 0 && restingHrNum < effectiveMaxHr);
-
   const canCalculate = isMaxHrValid && isRestingHrValid;
 
   function handlePercentChange(idx: number, field: "min" | "max", value: string) {
@@ -137,14 +128,11 @@ export default function HrCalculator() {
 
   async function handleCalculate() {
     if (!canCalculate) return;
-
     const computed =
       method === "karvonen"
         ? calculateZonesKarvonen(effectiveMaxHr, restingHrNum, zonePercents)
         : calculateZonesMhr(effectiveMaxHr, zonePercents);
-
     setZones(computed);
-
     setSaving(true);
     try {
       await fetch("/api/hr/settings", {
@@ -166,55 +154,43 @@ export default function HrCalculator() {
     }
   }
 
-  function handleMethodChange(m: Method) {
-    setMethod(m);
-    setZones(null);
-  }
-
-  function handleSourceChange(s: HrSource) {
-    setHrSource(s);
-    setZones(null);
-  }
-
   return (
     <div className="flex flex-col gap-6">
       {/* Input card */}
-      <Card>
+      <Card className="overflow-hidden">
+        <div className="h-[3px] bg-[var(--run-accent)]" />
         <CardHeader>
           <CardTitle>{t.hr.pageTitle}</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">{t.hr.pageSubtitle}</p>
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
 
-          {/* ── FCMax section ── */}
+          {/* FCMax section */}
           <div className="flex flex-col gap-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               FCMax
             </div>
-
-            {/* Source toggle */}
             <div className="flex gap-1.5">
-              <ToggleBtn active={hrSource === "manual"} onClick={() => handleSourceChange("manual")}>
+              <Chip active={hrSource === "manual"} onClick={() => { setHrSource("manual"); setZones(null); }}>
                 {t.hr.sourceManual}
-              </ToggleBtn>
-              <ToggleBtn active={hrSource === "formula"} onClick={() => handleSourceChange("formula")}>
+              </Chip>
+              <Chip active={hrSource === "formula"} onClick={() => { setHrSource("formula"); setZones(null); }}>
                 {t.hr.sourceFormula}
-              </ToggleBtn>
+              </Chip>
             </div>
 
             {hrSource === "manual" && (
               <div className="flex flex-col gap-1.5 max-w-xs">
-                <Label>{t.hr.maxHrLabel}</Label>
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  {t.hr.maxHrLabel}
+                </Label>
                 <Input
-                  type="number"
-                  inputMode="numeric"
-                  min={50}
-                  max={250}
+                  type="number" inputMode="numeric" min={50} max={250}
                   placeholder="es. 185"
                   value={maxHr}
                   onChange={(e) => { setMaxHr(e.target.value); setZones(null); }}
                   onKeyDown={(e) => e.key === "Enter" && canCalculate && handleCalculate()}
-                  className="font-mono"
+                  className="font-mono h-10"
                 />
               </div>
             )}
@@ -222,84 +198,72 @@ export default function HrCalculator() {
             {hrSource === "formula" && (
               <div className="flex flex-col gap-3">
                 <div className="flex flex-col gap-1.5 max-w-xs">
-                  <Label>{t.hr.ageLabel}</Label>
+                  <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    {t.hr.ageLabel}
+                  </Label>
                   <Input
-                    type="number"
-                    inputMode="numeric"
-                    min={10}
-                    max={120}
+                    type="number" inputMode="numeric" min={10} max={120}
                     placeholder="es. 35"
                     value={age}
                     onChange={(e) => { setAge(e.target.value); setZones(null); }}
                     onKeyDown={(e) => e.key === "Enter" && canCalculate && handleCalculate()}
-                    className="font-mono"
+                    className="font-mono h-10"
                   />
                 </div>
-
-                {/* Formula selector */}
                 <div className="flex flex-wrap gap-1.5">
                   {FORMULAS.map((f) => (
-                    <ToggleBtn
-                      key={f.id}
-                      active={formula === f.id}
-                      onClick={() => { setFormula(f.id); setZones(null); }}
-                    >
+                    <Chip key={f.id} active={formula === f.id} onClick={() => { setFormula(f.id); setZones(null); }}>
                       {f.label}
-                    </ToggleBtn>
+                    </Chip>
                   ))}
                 </div>
-
-                {/* Formula equation hint */}
                 <p className="text-xs text-muted-foreground">
                   {FORMULAS.find((f) => f.id === formula)?.equation}
                 </p>
-
-                {/* Computed max HR preview */}
                 {computedMaxHr !== null && (
                   <p className="text-sm font-medium">
                     {t.hr.computedMaxHr}:{" "}
-                    <span className="font-mono font-semibold">{computedMaxHr} bpm</span>
+                    <span className="font-mono font-bold text-[var(--run-accent)]">{computedMaxHr} bpm</span>
                   </p>
                 )}
               </div>
             )}
           </div>
 
-          {/* ── Method section ── */}
+          {/* Method section */}
           <div className="flex flex-col gap-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {t.hr.intensity}
             </div>
             <div className="flex gap-1.5">
-              <ToggleBtn active={method === "max"} onClick={() => handleMethodChange("max")}>
+              <Chip active={method === "max"} onClick={() => { setMethod("max"); setZones(null); }}>
                 {t.hr.methodMax}
-              </ToggleBtn>
-              <ToggleBtn active={method === "karvonen"} onClick={() => handleMethodChange("karvonen")}>
+              </Chip>
+              <Chip active={method === "karvonen"} onClick={() => { setMethod("karvonen"); setZones(null); }}>
                 {t.hr.methodKarvonen}
-              </ToggleBtn>
+              </Chip>
             </div>
             {method === "karvonen" && (
               <div className="flex flex-col gap-1.5 max-w-xs">
-                <Label>{t.hr.restingHrLabel}</Label>
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  {t.hr.restingHrLabel}
+                </Label>
                 <Input
-                  type="number"
-                  inputMode="numeric"
-                  min={30}
-                  max={120}
+                  type="number" inputMode="numeric" min={30} max={120}
                   placeholder="es. 55"
                   value={restingHr}
                   onChange={(e) => { setRestingHr(e.target.value); setZones(null); }}
                   onKeyDown={(e) => e.key === "Enter" && canCalculate && handleCalculate()}
-                  className="font-mono"
+                  className="font-mono h-10"
                 />
               </div>
             )}
           </div>
 
-          {/* ── Zone percentages section ── */}
+          {/* Zone percentages */}
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {t.hr.zonePercentsTitle}
               </div>
               <button
@@ -319,20 +283,14 @@ export default function HrCalculator() {
                     Z{idx + 1}
                   </span>
                   <Input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    max={100}
+                    type="number" inputMode="numeric" min={0} max={100}
                     value={zp.min}
                     onChange={(e) => handlePercentChange(idx, "min", e.target.value)}
                     className="w-14 font-mono text-center px-1"
                   />
                   <span className="text-xs text-muted-foreground">%–</span>
                   <Input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    max={100}
+                    type="number" inputMode="numeric" min={0} max={100}
                     value={zp.max}
                     onChange={(e) => handlePercentChange(idx, "max", e.target.value)}
                     className="w-14 font-mono text-center px-1"
@@ -343,34 +301,35 @@ export default function HrCalculator() {
             </div>
           </div>
 
-          <button
+          <Button
             onClick={handleCalculate}
             disabled={!canCalculate || saving}
             className={cn(
-              "self-start rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+              "self-start transition-colors",
               canCalculate && !saving
-                ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                : "bg-muted text-muted-foreground cursor-not-allowed"
+                ? "bg-[var(--run-accent)] hover:bg-[var(--run-accent)]/90 border-[var(--run-accent)] text-white"
+                : ""
             )}
           >
             {saving ? t.hr.calculatingBtn : t.hr.calculateBtn}
-          </button>
+          </Button>
         </CardContent>
       </Card>
 
       {/* Results */}
       {zones && (
-        <Card>
+        <Card className="overflow-hidden">
+          <div className="h-[3px] bg-[var(--run-accent)]" />
           <CardHeader>
             <CardTitle>{t.hr.zonesTitle}</CardTitle>
           </CardHeader>
           <CardContent className="p-0 divide-y divide-border">
-            {zones.map((zone) => {
+            {zones.map((zone, i) => {
               const meta = ZONE_META[zone.id];
               const colorClass = ZONE_COLORS[zone.id];
               const zp = zonePercents[zone.id - 1];
               return (
-                <div key={zone.id} className="flex items-center gap-3 px-4 py-3">
+                <div key={zone.id} className={cn("flex items-center gap-3 px-4 py-3", i % 2 === 1 && "bg-muted/20")}>
                   <span className={cn("shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full border text-xs font-bold", colorClass)}>
                     Z{zone.id}
                   </span>
@@ -379,7 +338,7 @@ export default function HrCalculator() {
                     <div className="text-xs text-muted-foreground truncate">{meta.desc}</div>
                   </div>
                   <div className="shrink-0 text-right">
-                    <div className="font-mono font-semibold text-sm tabular-nums">
+                    <div className="font-mono font-bold text-sm tabular-nums text-[var(--run-accent)]">
                       {zone.minBpm}–{zone.maxBpm}
                       <span className="text-xs text-muted-foreground font-normal ml-1">bpm</span>
                     </div>

@@ -64,7 +64,8 @@ export default function WeightForm({ onSuccess }: WeightFormProps) {
   }
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
+      <div className="h-[3px] bg-[var(--run-accent)]" />
       <CardHeader>
         <CardTitle>{t.weight.formTitle}</CardTitle>
       </CardHeader>
@@ -72,7 +73,7 @@ export default function WeightForm({ onSuccess }: WeightFormProps) {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="date">{t.weight.dateLabel}</Label>
+              <Label htmlFor="date" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.weight.dateLabel}</Label>
               <Input
                 id="date"
                 type="date"
@@ -83,7 +84,7 @@ export default function WeightForm({ onSuccess }: WeightFormProps) {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="weight">{t.weight.weightLabel}</Label>
+              <Label htmlFor="weight" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.weight.weightLabel}</Label>
               <Input
                 id="weight"
                 type="number"

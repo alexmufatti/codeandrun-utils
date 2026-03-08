@@ -59,14 +59,15 @@ export default function WeightTarget({
   }
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
+      <div className="h-[3px] bg-[var(--run-accent)]" />
       <CardHeader>
         <CardTitle>{t.weight.targetTitle}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="flex gap-3">
           <div className="flex flex-col gap-1.5 flex-1">
-            <Label htmlFor="target">{t.weight.targetLabel}</Label>
+            <Label htmlFor="target" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t.weight.targetLabel}</Label>
             <Input
               id="target"
               type="number"
