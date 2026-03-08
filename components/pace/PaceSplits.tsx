@@ -23,13 +23,13 @@ export default function PaceSplits({ splits }: PaceSplitsProps) {
       <table className="w-full text-sm">
         <thead className="sticky top-0 bg-muted">
           <tr>
-            <th className="px-4 py-2 text-left font-medium text-muted-foreground w-16">
+            <th className="px-4 py-2.5 text-left font-medium text-xs text-muted-foreground uppercase tracking-wider w-16">
               {t.pace.splitsColN}
             </th>
-            <th className="px-4 py-2 text-right font-medium text-muted-foreground">
+            <th className="px-4 py-2.5 text-right font-medium text-xs text-muted-foreground uppercase tracking-wider">
               {t.pace.splitsColSplit}
             </th>
-            <th className="px-4 py-2 text-right font-medium text-muted-foreground">
+            <th className="px-4 py-2.5 text-right font-medium text-xs text-muted-foreground uppercase tracking-wider">
               {t.pace.splitsColCumulative}
             </th>
           </tr>
@@ -39,17 +39,32 @@ export default function PaceSplits({ splits }: PaceSplitsProps) {
             <tr
               key={i}
               className={cn(
-                "border-t border-border",
+                "border-t border-border transition-colors",
                 split.isPartial
-                  ? "bg-primary/5 font-medium text-primary"
-                  : "hover:bg-muted/50"
+                  ? "bg-[var(--run-accent-muted)] font-semibold"
+                  : i % 2 === 0
+                  ? "hover:bg-muted/50"
+                  : "bg-muted/20 hover:bg-muted/50"
               )}
             >
-              <td className="px-4 py-2 text-muted-foreground">
+              <td className={cn(
+                "px-4 py-2 font-mono",
+                split.isPartial ? "text-[var(--run-accent)]" : "text-muted-foreground"
+              )}>
                 {split.isPartial ? "~" : i + 1}
               </td>
-              <td className="px-4 py-2 text-right font-mono">{split.splitTime}</td>
-              <td className="px-4 py-2 text-right font-mono">{split.cumulative}</td>
+              <td className={cn(
+                "px-4 py-2 text-right font-mono",
+                split.isPartial && "text-[var(--run-accent)]"
+              )}>
+                {split.splitTime}
+              </td>
+              <td className={cn(
+                "px-4 py-2 text-right font-mono",
+                split.isPartial && "text-[var(--run-accent)]"
+              )}>
+                {split.cumulative}
+              </td>
             </tr>
           ))}
         </tbody>

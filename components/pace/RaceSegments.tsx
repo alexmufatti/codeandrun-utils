@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLocalStorage } from "@/lib/hooks/useLocalStorage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,8 +29,8 @@ function makeSegment(): Segment {
 
 export default function RaceSegments() {
   const { t } = useTranslations();
-  const [totalRaceKm, setTotalRaceKm] = useState("");
-  const [segments, setSegments] = useState<Segment[]>([makeSegment(), makeSegment()]);
+  const [totalRaceKm, setTotalRaceKm] = useLocalStorage("pace-segments-total-km", "");
+  const [segments, setSegments] = useLocalStorage<Segment[]>("pace-segments-list", [makeSegment(), makeSegment()]);
 
   function update(id: string, field: "label" | "distanceKm" | "paceInput", value: string) {
     setSegments((prev) =>
@@ -69,17 +69,20 @@ export default function RaceSegments() {
   const totals = calculateSegments(effectiveSegments);
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
+      <div className="h-[3px] bg-[var(--run-accent)]" />
       <CardHeader>
         <CardTitle>{t.pace.segmentsTitle}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {/* Total race distance */}
-        <div className="flex flex-col gap-2 pb-3 border-b border-border">
+        <div className="flex flex-col gap-2 pb-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <Label className="whitespace-nowrap shrink-0">{t.pace.raceDistance}</Label>
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider whitespace-nowrap shrink-0">
+              {t.pace.raceDistance}
+            </Label>
             <Input
-              className="w-36"
+              className="w-36 h-10"
               placeholder="es. 42.195"
               value={totalRaceKm}
               onChange={(e) => setTotalRaceKm(e.target.value)}
@@ -93,9 +96,9 @@ export default function RaceSegments() {
                   key={value}
                   onClick={() => setTotalRaceKm(active ? "" : value)}
                   className={cn(
-                    "rounded-full px-3 py-1 text-xs font-medium border transition-colors",
+                    "rounded-full px-3 py-1 text-xs font-semibold border transition-colors",
                     active
-                      ? "bg-primary text-primary-foreground border-primary"
+                      ? "bg-[var(--run-accent)] text-white border-[var(--run-accent)]"
                       : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
                   )}
                 >
@@ -107,10 +110,17 @@ export default function RaceSegments() {
         </div>
 
         {/* Column headers */}
-        <div className="hidden sm:grid grid-cols-[1fr_160px_120px_36px] gap-2 px-1">
-          <Label className="text-xs text-muted-foreground">{t.pace.segmentLabelCol}</Label>
-          <Label className="text-xs text-muted-foreground">{t.pace.segmentDistanceCol}</Label>
-          <Label className="text-xs text-muted-foreground">{t.pace.segmentPaceCol}</Label>
+        <div className="hidden sm:grid grid-cols-[28px_1fr_160px_120px_36px] gap-2 px-1">
+          <span />
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            {t.pace.segmentLabelCol}
+          </Label>
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            {t.pace.segmentDistanceCol}
+          </Label>
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            {t.pace.segmentPaceCol}
+          </Label>
           <span />
         </div>
 
@@ -123,30 +133,44 @@ export default function RaceSegments() {
           return (
             <div
               key={seg.id}
-              className="grid grid-cols-1 sm:grid-cols-[1fr_160px_120px_36px] gap-2 items-end"
+              className={cn(
+                "grid grid-cols-1 sm:grid-cols-[28px_1fr_160px_120px_36px] gap-2 items-end rounded-lg transition-colors",
+                isRest && "bg-muted/30 p-2 -mx-2"
+              )}
             >
+              {/* Row number */}
+              <div className={cn(
+                "hidden sm:flex h-10 w-7 items-center justify-center rounded-md text-xs font-mono font-semibold",
+                isRest
+                  ? "bg-[var(--run-accent-muted)] text-[var(--run-accent)]"
+                  : "bg-muted text-muted-foreground"
+              )}>
+                {i + 1}
+              </div>
+
               <div className="flex flex-col gap-1">
-                <Label className="sm:hidden text-xs text-muted-foreground">
+                <Label className="sm:hidden text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   {t.pace.segmentLabelCol}
                 </Label>
                 <Input
                   placeholder={interpolate(t.pace.segmentPlaceholder, { n: i + 1 })}
                   value={seg.label}
                   onChange={(e) => update(seg.id, "label", e.target.value)}
+                  className="h-10"
                 />
               </div>
 
               <div className="flex flex-col gap-1">
-                <Label className="sm:hidden text-xs text-muted-foreground">
+                <Label className="sm:hidden text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   {t.pace.segmentDistanceCol}
                 </Label>
                 <div className="flex gap-1.5 items-center">
                   {isRest ? (
                     <div
                       className={cn(
-                        "flex-1 flex h-9 items-center rounded-md border px-3 text-sm font-mono",
+                        "flex-1 flex h-10 items-center rounded-md border px-3 text-sm font-mono font-semibold",
                         restVal
-                          ? "border-primary bg-primary/5 text-primary font-semibold"
+                          ? "border-[var(--run-accent)] bg-[var(--run-accent-muted)] text-[var(--run-accent)]"
                           : "border-border text-muted-foreground"
                       )}
                     >
@@ -154,7 +178,7 @@ export default function RaceSegments() {
                     </div>
                   ) : (
                     <Input
-                      className="flex-1"
+                      className="flex-1 h-10"
                       placeholder={t.pace.distancePlaceholder}
                       value={seg.distanceKm}
                       onChange={(e) => update(seg.id, "distanceKm", e.target.value)}
@@ -164,9 +188,9 @@ export default function RaceSegments() {
                     onClick={() => toggleRest(seg.id)}
                     title={t.pace.segmentRest}
                     className={cn(
-                      "shrink-0 rounded px-2 h-9 text-xs font-medium border transition-colors",
+                      "shrink-0 rounded px-2 h-10 text-xs font-semibold border transition-colors",
                       isRest
-                        ? "bg-primary text-primary-foreground border-primary"
+                        ? "bg-[var(--run-accent)] text-white border-[var(--run-accent)]"
                         : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
                     )}
                   >
@@ -176,14 +200,14 @@ export default function RaceSegments() {
               </div>
 
               <div className="flex flex-col gap-1">
-                <Label className="sm:hidden text-xs text-muted-foreground">
+                <Label className="sm:hidden text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   {t.pace.segmentPaceCol}
                 </Label>
                 <Input
                   placeholder={t.pace.pacePlaceholder}
                   value={seg.paceInput}
                   onChange={(e) => update(seg.id, "paceInput", e.target.value)}
-                  className="font-mono"
+                  className="font-mono h-10"
                 />
               </div>
 
@@ -192,7 +216,7 @@ export default function RaceSegments() {
                 size="icon"
                 onClick={() => removeSegment(seg.id)}
                 disabled={segments.length <= 1}
-                className="text-muted-foreground hover:text-destructive"
+                className="text-muted-foreground hover:text-destructive h-10"
                 aria-label={t.pace.removeSegment}
               >
                 ×
@@ -205,19 +229,34 @@ export default function RaceSegments() {
           {t.pace.addSegment}
         </Button>
 
+        {/* Totals summary */}
         {totals && (
-          <div className="rounded-lg bg-muted px-4 py-3 grid grid-cols-3 gap-4 text-sm">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs text-muted-foreground">{t.pace.totalDistance}</span>
-              <span className="font-semibold">{totals.totalDistKm.toFixed(3)} km</span>
+          <div className="rounded-xl border border-[var(--run-accent)]/30 bg-[var(--run-accent-muted)] px-5 py-4 grid grid-cols-3 gap-4">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                {t.pace.totalDistance}
+              </span>
+              <span className="text-2xl font-bold font-mono text-[var(--run-accent)]">
+                {totals.totalDistKm.toFixed(3)}
+                <span className="text-sm font-normal text-muted-foreground ml-1">km</span>
+              </span>
             </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs text-muted-foreground">{t.pace.totalTime}</span>
-              <span className="font-semibold font-mono">{formatTime(totals.totalTimeSec)}</span>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                {t.pace.totalTime}
+              </span>
+              <span className="text-2xl font-bold font-mono text-[var(--run-accent)]">
+                {formatTime(totals.totalTimeSec)}
+              </span>
             </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs text-muted-foreground">{t.pace.avgPace}</span>
-              <span className="font-semibold font-mono">{formatPace(totals.avgPaceSec)} /km</span>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                {t.pace.avgPace}
+              </span>
+              <span className="text-2xl font-bold font-mono text-[var(--run-accent)]">
+                {formatPace(totals.avgPaceSec)}
+                <span className="text-sm font-normal text-muted-foreground ml-1">/km</span>
+              </span>
             </div>
           </div>
         )}

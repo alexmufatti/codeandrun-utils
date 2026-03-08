@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
+import { useLocalStorage } from "@/lib/hooks/useLocalStorage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,12 +30,12 @@ const PRESET_DISTANCES: { label: string; value: string }[] = [
 
 export default function PaceCalculator() {
   const { t } = useTranslations();
-  const [mode, setMode] = useState<CalcMode>("pace");
-  const [distanceInput, setDistanceInput] = useState("");
-  const [timeInput, setTimeInput] = useState("");
-  const [paceInput, setPaceInput] = useState("");
-  const [showSplits, setShowSplits] = useState(false);
-  const [splitUnit, setSplitUnit] = useState<SplitUnit>("km");
+  const [mode, setMode] = useLocalStorage<CalcMode>("pace-calc-mode", "pace");
+  const [distanceInput, setDistanceInput] = useLocalStorage("pace-calc-distance", "");
+  const [timeInput, setTimeInput] = useLocalStorage("pace-calc-time", "");
+  const [paceInput, setPaceInput] = useLocalStorage("pace-calc-pace", "");
+  const [showSplits, setShowSplits] = useLocalStorage("pace-calc-show-splits", false);
+  const [splitUnit, setSplitUnit] = useLocalStorage<SplitUnit>("pace-calc-split-unit", "km");
 
   const MODES: { value: CalcMode; label: string }[] = [
     { value: "pace", label: t.pace.calcPaceMode },
@@ -83,29 +84,34 @@ export default function PaceCalculator() {
   const canShowSplits = mode !== "distance" && !!result;
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="overflow-hidden">
+      <div className="h-[3px] bg-[var(--run-accent)]" />
+      <CardHeader className="pb-0">
         <CardTitle>{t.pace.calculatorTitle}</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-5">
-        {/* Mode selector */}
-        <div className="flex gap-1 rounded-lg bg-muted p-1">
-          {MODES.map(({ value, label }) => (
-            <button
-              key={value}
-              onClick={() => setMode(value)}
-              className={cn(
-                "flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                mode === value
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
 
+      {/* Mode tabs */}
+      <div className="flex border-b border-border px-6 mt-4">
+        {MODES.map(({ value, label }) => (
+          <button
+            key={value}
+            onClick={() => setMode(value)}
+            className={cn(
+              "relative px-4 py-2.5 text-sm font-medium transition-colors",
+              mode === value
+                ? "text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {label}
+            {mode === value && (
+              <span className="absolute bottom-0 inset-x-0 h-[2px] bg-[var(--run-accent)] rounded-full" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      <CardContent className="flex flex-col gap-5 pt-5">
         {/* Preset distance chips */}
         {mode !== "distance" && (
           <div className="flex flex-wrap gap-1.5">
@@ -116,9 +122,9 @@ export default function PaceCalculator() {
                   key={value}
                   onClick={() => setDistanceInput(active ? "" : value)}
                   className={cn(
-                    "rounded-full px-3 py-1 text-xs font-medium border transition-colors",
+                    "rounded-full px-3 py-1 text-xs font-semibold border transition-colors",
                     active
-                      ? "bg-primary text-primary-foreground border-primary"
+                      ? "bg-[var(--run-accent)] text-white border-[var(--run-accent)]"
                       : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
                   )}
                 >
@@ -129,9 +135,9 @@ export default function PaceCalculator() {
             <button
               onClick={() => setDistanceInput("")}
               className={cn(
-                "rounded-full px-3 py-1 text-xs font-medium border transition-colors",
+                "rounded-full px-3 py-1 text-xs font-semibold border transition-colors",
                 !PRESET_DISTANCES.some((p) => p.value === distanceInput)
-                  ? "bg-primary text-primary-foreground border-primary"
+                  ? "bg-[var(--run-accent)] text-white border-[var(--run-accent)]"
                   : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
               )}
             >
@@ -144,11 +150,15 @@ export default function PaceCalculator() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Distance */}
           <div className="flex flex-col gap-1.5">
-            <Label>{t.pace.distanceLabel}</Label>
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              {t.pace.distanceLabel}
+            </Label>
             {mode === "distance" ? (
               <div className={cn(
-                "flex h-9 items-center rounded-md border border-primary bg-primary/5 px-3 text-sm font-semibold text-primary",
-                result ? "" : "text-muted-foreground"
+                "flex h-14 items-center justify-center rounded-lg border-2 px-4 text-3xl font-bold font-mono tracking-tight transition-all",
+                result
+                  ? "border-[var(--run-accent)] bg-[var(--run-accent-muted)] text-[var(--run-accent)]"
+                  : "border-border text-muted-foreground"
               )}>
                 {result?.value ?? "—"}
               </div>
@@ -157,17 +167,22 @@ export default function PaceCalculator() {
                 placeholder="es. 42.195"
                 value={distanceInput}
                 onChange={(e) => setDistanceInput(e.target.value)}
+                className="h-10"
               />
             )}
           </div>
 
           {/* Time */}
           <div className="flex flex-col gap-1.5">
-            <Label>{t.pace.timeLabel}</Label>
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              {t.pace.timeLabel}
+            </Label>
             {mode === "time" ? (
               <div className={cn(
-                "flex h-9 items-center rounded-md border border-primary bg-primary/5 px-3 text-sm font-semibold text-primary font-mono",
-                result ? "" : "text-muted-foreground"
+                "flex h-14 items-center justify-center rounded-lg border-2 px-4 text-3xl font-bold font-mono tracking-tight transition-all",
+                result
+                  ? "border-[var(--run-accent)] bg-[var(--run-accent-muted)] text-[var(--run-accent)]"
+                  : "border-border text-muted-foreground"
               )}>
                 {result?.value ?? "—"}
               </div>
@@ -176,18 +191,22 @@ export default function PaceCalculator() {
                 placeholder="es. 3:30:00"
                 value={timeInput}
                 onChange={(e) => setTimeInput(e.target.value)}
-                className="font-mono"
+                className="font-mono h-10"
               />
             )}
           </div>
 
           {/* Pace */}
           <div className="flex flex-col gap-1.5">
-            <Label>{t.pace.paceLabel}</Label>
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              {t.pace.paceLabel}
+            </Label>
             {mode === "pace" ? (
               <div className={cn(
-                "flex h-9 items-center rounded-md border border-primary bg-primary/5 px-3 text-sm font-semibold text-primary font-mono",
-                result ? "" : "text-muted-foreground"
+                "flex h-14 items-center justify-center rounded-lg border-2 px-4 text-3xl font-bold font-mono tracking-tight transition-all",
+                result
+                  ? "border-[var(--run-accent)] bg-[var(--run-accent-muted)] text-[var(--run-accent)]"
+                  : "border-border text-muted-foreground"
               )}>
                 {result?.value ?? "—"}
               </div>
@@ -196,7 +215,7 @@ export default function PaceCalculator() {
                 placeholder="es. 4:58"
                 value={paceInput}
                 onChange={(e) => setPaceInput(e.target.value)}
-                className="font-mono"
+                className="font-mono h-10"
               />
             )}
           </div>
@@ -210,6 +229,9 @@ export default function PaceCalculator() {
                 variant={showSplits ? "default" : "outline"}
                 size="sm"
                 onClick={() => setShowSplits((v) => !v)}
+                className={cn(
+                  showSplits && "bg-[var(--run-accent)] hover:bg-[var(--run-accent)]/90 border-[var(--run-accent)] text-white"
+                )}
               >
                 {showSplits ? t.pace.hideSplits : t.pace.showSplits}
               </Button>
