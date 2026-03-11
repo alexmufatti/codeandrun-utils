@@ -68,6 +68,18 @@ Pace and VDOT features are client-only (no API/DB). Weight tracker has API route
 - Server: `/data/utils/` contains `docker-compose.yml` and `.env.local`
 - Production: `apps.codeandrun.it` → reverse proxy → port 3002 → container port 3000
 
+### Strava Integration
+
+Auth is Google-primary + Strava as an optional linked account (not a NextAuth provider).
+
+- `models/StravaConnection.ts` — stores `{ userId, athleteId, accessToken, refreshToken, expiresAt, athleteFirstname, athleteLastname }` with `userId` as unique key
+- `GET /api/connect/strava` — redirects to Strava OAuth (requires active session)
+- `GET /api/connect/strava/callback` — exchanges code, upserts `StravaConnection`, redirects to `/dashboard/strava`
+- `DELETE /api/connect/strava/disconnect` — removes the connection
+- `app/dashboard/strava/` — page showing connection status; future home for activity list
+
+Strava access tokens expire in 6 hours. Before any Strava API call, use a `getStravaAccessToken(userId)` helper (to be implemented) that checks `expiresAt` and refreshes via `POST https://www.strava.com/oauth/token` with `grant_type: refresh_token`.
+
 ### Required Environment Variables
 
 ```
@@ -76,4 +88,6 @@ GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET
 NEXTAUTH_SECRET
 NEXTAUTH_URL        # or trustHost: true handles reverse proxy
+STRAVA_CLIENT_ID
+STRAVA_CLIENT_SECRET
 ```

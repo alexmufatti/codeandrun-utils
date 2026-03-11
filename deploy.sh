@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ── Configurazione ──────────────────────────────────────────────────────────
 SERVER_USER="mua"
-SERVER_HOST="timmy.pistulinux"
+SERVER_HOST="192.168.252.251" #"timmy.pistulinux"
 SERVER_DIR="/data/utils"   # cartella sul server con .env.local e docker-compose.yml
 IMAGE_NAME="codeandrun-web"
 IMAGE_TAG="latest"

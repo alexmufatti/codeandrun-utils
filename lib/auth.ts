@@ -15,7 +15,7 @@ const clientPromise = client.connect();
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   adapter: MongoDBAdapter(clientPromise, {
-    databaseName: "codeandrun",
+    databaseName: "codeandrun-utils",
   }),
   callbacks: {
     ...authConfig.callbacks,
