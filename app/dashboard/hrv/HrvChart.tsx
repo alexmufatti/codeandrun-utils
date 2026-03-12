@@ -88,6 +88,12 @@ export default function HrvChart({ events }: { events: CalendarEvent[] }) {
     fetchData(period);
   }, [fetchData, period]);
 
+  const rangeStart = fromDate(period);
+  const rangeEnd = new Date().toISOString().substring(0, 10);
+  const visibleEvents = events.filter(
+    (ev) => ev.start_date <= rangeEnd && ev.end_date >= rangeStart
+  );
+
   const chartData = data.map((x) => ({
     ...x,
     baselineLow: x.baseline?.balancedLow ?? undefined,
@@ -207,7 +213,7 @@ export default function HrvChart({ events }: { events: CalendarEvent[] }) {
             />
             <Tooltip content={<CustomTooltip />} />
             {/* Events */}
-            {events.map((ev) => (
+            {visibleEvents.map((ev) => (
               <ReferenceArea
                 key={ev._id}
                 x1={ev.start_date}

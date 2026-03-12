@@ -10,12 +10,16 @@ IMAGE_TAG="latest"
 # ────────────────────────────────────────────────────────────────────────────
 
 IMAGE="${IMAGE_NAME}:${IMAGE_TAG}"
+SYNC_IMAGE="codeandrun-garmin-sync:latest"
 
 echo "▶ Build immagine Docker: ${IMAGE}"
 docker build --platform linux/amd64 -t "${IMAGE}" .
 
-echo "▶ Trasferimento immagine al server ${SERVER_HOST}..."
-docker save "${IMAGE}" | gzip | ssh "${SERVER_USER}@${SERVER_HOST}" "gunzip | docker load"
+echo "▶ Build immagine garmin-sync: ${SYNC_IMAGE}"
+docker build --platform linux/amd64 -t "${SYNC_IMAGE}" garmin-sync/
+
+echo "▶ Trasferimento immagini al server ${SERVER_HOST}..."
+docker save "${IMAGE}" "${SYNC_IMAGE}" | gzip | ssh "${SERVER_USER}@${SERVER_HOST}" "gunzip | docker load"
 
 echo "▶ Avvio container sul server..."
 ssh "${SERVER_USER}@${SERVER_HOST}" "

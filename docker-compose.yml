@@ -6,3 +6,14 @@ services:
     env_file:
       - .env.local
     restart: unless-stopped
+
+  garmin-sync:
+    image: codeandrun-garmin-sync:latest
+    env_file:
+      - .env.local
+    volumes:
+      - garmin-tokens:/data/garmin_tokens
+    restart: unless-stopped
+
+volumes:
+  garmin-tokens:
