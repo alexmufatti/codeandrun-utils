@@ -18,6 +18,25 @@ interface ChartDataPoint {
   weightKg: number;
 }
 
+function buildFullDateRange(
+  data: ChartDataPoint[],
+  period: PeriodDays
+): { date: string; weightKg: number | null }[] {
+  const byDate = new Map(data.map((d) => [d.date, d.weightKg]));
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const result: { date: string; weightKg: number | null }[] = [];
+  for (let i = period - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const iso = d.toISOString().slice(0, 10);
+    result.push({ date: iso, weightKg: byDate.get(iso) ?? null });
+  }
+  return result;
+}
+
 interface WeightChartProps {
   data: ChartDataPoint[];
   targetWeightKg: number | null;
@@ -32,7 +51,7 @@ function formatDate(dateStr: string): string {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function CustomTooltip({ active, payload, label }: any) {
-  if (active && payload && payload.length) {
+  if (active && payload && payload.length && payload[0].value !== null) {
     return (
       <div className="bg-background border border-border rounded-lg p-3 shadow-md text-sm">
         <p className="font-medium">{formatDate(label)}</p>
@@ -56,6 +75,8 @@ export default function WeightChart({
     { label: t.weight.period90, value: 90 },
     { label: t.weight.period365, value: 365 },
   ];
+
+  const chartData = buildFullDateRange(data, period);
 
   const weights = data.map((d) => d.weightKg);
   const minW = weights.length ? Math.min(...weights) : 50;
@@ -90,7 +111,7 @@ export default function WeightChart({
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+          <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
             <XAxis
               dataKey="date"
