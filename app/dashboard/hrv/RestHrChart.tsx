@@ -175,8 +175,8 @@ export default function RestHrChart({ events }: { events: CalendarEvent[] }) {
             {visibleEvents.map((ev) => (
               <ReferenceArea
                 key={ev._id}
-                x1={ev.start_date}
-                x2={ev.end_date}
+                x1={ev.start_date < rangeStart ? rangeStart : ev.start_date}
+                x2={ev.end_date > rangeEnd ? rangeEnd : ev.end_date}
                 fill="rgba(251,146,60,0.15)"
                 stroke="rgba(251,146,60,0.4)"
                 strokeWidth={1}
