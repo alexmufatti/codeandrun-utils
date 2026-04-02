@@ -94,14 +94,14 @@ export default function HrvChart({ events }: { events: CalendarEvent[] }) {
     (ev) => ev.start_date <= rangeEnd && ev.end_date >= rangeStart
   );
 
-  const firstDate = chartData[0]?.calendarDate ?? rangeStart;
-  const lastDate = chartData[chartData.length - 1]?.calendarDate ?? rangeEnd;
-
   const chartData = data.map((x) => ({
     ...x,
     baselineLow: x.baseline?.balancedLow ?? undefined,
     baselineHigh: x.baseline?.balancedUpper ?? undefined,
   }));
+
+  const firstDate = chartData[0]?.calendarDate ?? rangeStart;
+  const lastDate = chartData[chartData.length - 1]?.calendarDate ?? rangeEnd;
 
   const allValues = chartData.flatMap((d) => [
     d.weeklyAvg,
