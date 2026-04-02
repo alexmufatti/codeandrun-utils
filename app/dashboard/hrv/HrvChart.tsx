@@ -94,6 +94,9 @@ export default function HrvChart({ events }: { events: CalendarEvent[] }) {
     (ev) => ev.start_date <= rangeEnd && ev.end_date >= rangeStart
   );
 
+  const firstDate = chartData[0]?.calendarDate ?? rangeStart;
+  const lastDate = chartData[chartData.length - 1]?.calendarDate ?? rangeEnd;
+
   const chartData = data.map((x) => ({
     ...x,
     baselineLow: x.baseline?.balancedLow ?? undefined,
@@ -216,8 +219,8 @@ export default function HrvChart({ events }: { events: CalendarEvent[] }) {
             {visibleEvents.map((ev) => (
               <ReferenceArea
                 key={ev._id}
-                x1={ev.start_date < rangeStart ? rangeStart : ev.start_date}
-                x2={ev.end_date > rangeEnd ? rangeEnd : ev.end_date}
+                x1={ev.start_date < firstDate ? firstDate : ev.start_date}
+                x2={ev.end_date > lastDate ? lastDate : ev.end_date}
                 fill="rgba(251,146,60,0.15)"
                 stroke="rgba(251,146,60,0.4)"
                 strokeWidth={1}

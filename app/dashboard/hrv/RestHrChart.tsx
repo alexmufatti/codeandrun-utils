@@ -83,6 +83,9 @@ export default function RestHrChart({ events }: { events: CalendarEvent[] }) {
     (ev) => ev.start_date <= rangeEnd && ev.end_date >= rangeStart
   );
 
+  const firstDate = data[0]?.calendarDate ?? rangeStart;
+  const lastDate = data[data.length - 1]?.calendarDate ?? rangeEnd;
+
   const allValues = data.flatMap((d) => [d.values.restingHR, d.movingAvg]).filter((v): v is number => v != null);
   const yMin = allValues.length ? Math.floor(Math.min(...allValues)) - 2 : 30;
   const yMax = allValues.length ? Math.ceil(Math.max(...allValues)) + 2 : 80;
@@ -175,8 +178,8 @@ export default function RestHrChart({ events }: { events: CalendarEvent[] }) {
             {visibleEvents.map((ev) => (
               <ReferenceArea
                 key={ev._id}
-                x1={ev.start_date < rangeStart ? rangeStart : ev.start_date}
-                x2={ev.end_date > rangeEnd ? rangeEnd : ev.end_date}
+                x1={ev.start_date < firstDate ? firstDate : ev.start_date}
+                x2={ev.end_date > lastDate ? lastDate : ev.end_date}
                 fill="rgba(251,146,60,0.15)"
                 stroke="rgba(251,146,60,0.4)"
                 strokeWidth={1}
