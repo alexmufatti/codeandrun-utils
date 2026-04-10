@@ -267,7 +267,7 @@ export function buildChartData(monthlyData: any[]) {
     return [
       monthName,
       ...years.map((year) => {
-        if (year === currentYear && monthNum > currentMonth) return null;
+        if (year === currentYear && monthNum >= currentMonth) return null;
         const cumulative = monthlyData
           .filter((d) => d._id.year === year && d._id.month <= monthNum)
           .reduce((acc, d) => acc + d.total_distance / 1000, 0);
