@@ -44,31 +44,10 @@ export default function DashboardNav() {
 
   return (
     <>
-      {/* Desktop: inline links */}
-      <nav className="hidden md:flex items-center gap-0.5">
-        {NAV_LINKS.map(({ href, label, exact }) => {
-          const isActive = isLinkActive(href, exact);
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "px-2 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap",
-                isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              )}
-            >
-              {label}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* Mobile: hamburger button */}
+      {/* Hamburger button */}
       <button
         onClick={() => setOpen(true)}
-        className="md:hidden flex items-center justify-center w-9 h-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        className="flex items-center justify-center w-9 h-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
         aria-label="Apri menu"
       >
         <Menu className="h-5 w-5" />
@@ -77,7 +56,7 @@ export default function DashboardNav() {
       {/* Drawer backdrop */}
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
           onClick={() => setOpen(false)}
         />
       )}
@@ -85,7 +64,7 @@ export default function DashboardNav() {
       {/* Drawer panel */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 bg-background border-r border-border flex flex-col md:hidden transition-transform duration-300 ease-in-out",
+          "fixed inset-y-0 left-0 z-50 w-72 bg-background border-r border-border flex flex-col transition-transform duration-300 ease-in-out",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
