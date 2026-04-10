@@ -12,7 +12,7 @@ export default function DashboardLayout({
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0 overflow-hidden">
+          <div className="flex items-center gap-3">
             <span className="text-2xl shrink-0">🏃</span>
             <span className="text-lg font-semibold whitespace-nowrap shrink-0">CodeAndRun</span>
             <DashboardNav />
