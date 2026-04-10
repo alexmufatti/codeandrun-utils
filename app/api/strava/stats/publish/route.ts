@@ -51,10 +51,14 @@ function buildGoogleChartsHtml(
     "#FC4C02", "#1E3A8A", "#10B981", "#3B82F6", "#FF7A3D", "#6366F1", "#F59E0B",
   ];
 
+  const defaultHidden = new Set(years.slice(0, Math.max(0, years.length - 4)));
   const buttonsHtml = years
     .map((year, i) => {
       const color = colors[i % colors.length];
-      return `<button id="btn-year-${year}" onclick="toggleYear(${i})" style="margin:0 4px 8px 0;padding:4px 14px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;border:2px solid ${color};background:${color};color:#fff;transition:all 0.15s">${year}</button>`;
+      const isHidden = defaultHidden.has(year);
+      const bg = isHidden ? "transparent" : color;
+      const fg = isHidden ? color : "#fff";
+      return `<button id="btn-year-${year}" onclick="toggleYear(${i})" style="margin:0 4px 8px 0;padding:4px 14px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;border:2px solid ${color};background:${bg};color:${fg};transition:all 0.15s">${year}</button>`;
     })
     .join("\n");
 
@@ -65,6 +69,7 @@ function buildGoogleChartsHtml(
   var _years = ${JSON.stringify(years)};
   var _colors = ${JSON.stringify(colors)};
   var _hidden = {};
+  _years.forEach(function(year, i) { if (i < _years.length - 4) _hidden[i] = true; });
   var _chart, _data;
 
   google.charts.load('current', {'packages':['corechart']});
@@ -103,7 +108,7 @@ ${dataRows}
 
   function toggleYear(i) {
     var visibleCount = _years.filter(function(year, k) { return !_hidden[k]; }).length;
-    if (!_hidden[i] && visibleCount === 1) return;
+    if (!_hidden[i]) { if (visibleCount === 1) return; }
     _hidden[i] = !_hidden[i];
     var btn = document.getElementById('btn-year-' + _years[i]);
     var color = _colors[i % _colors.length];
@@ -268,10 +273,10 @@ export async function POST() {
 
   const blocks = [
     wrapInGutenbergHtml(`<p style="font-size:13px;color:#9ca3af;margin:0 0 8px;"><em>Aggiornato il ${updateDate}</em></p>`),
-    wrapInGutenbergHtml(chartHtml),
-    wrapInGutenbergHtml(tableHtml),
   ];
   if (prHtml) blocks.push(wrapInGutenbergHtml(prHtml));
+  blocks.push(wrapInGutenbergHtml(chartHtml));
+  blocks.push(wrapInGutenbergHtml(tableHtml));
 
   const content = blocks.join("\n\n");
 

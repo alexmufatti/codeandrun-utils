@@ -9,7 +9,8 @@
       "Bash(curl:*)",
       "Bash(git rm:*)",
       "Bash(./deploy.sh:*)",
-      "Bash(PATH=\"/usr/local/bin:/Applications/Docker.app/Contents/Resources/bin:$PATH\" ./deploy.sh)"
+      "Bash(PATH=\"/usr/local/bin:/Applications/Docker.app/Contents/Resources/bin:$PATH\" ./deploy.sh)",
+      "Bash(git commit:*)"
     ]
   }
 }

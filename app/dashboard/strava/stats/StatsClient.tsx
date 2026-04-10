@@ -135,7 +135,7 @@ function buildChartData(monthlyData: MonthStat[], metric: Metric) {
     const monthNum = i + 1;
     const row: Record<string, string | number | null> = { month: monthName };
     for (const year of years) {
-      if (year === currentYear && monthNum > currentMonth) {
+      if (year === currentYear && monthNum >= currentMonth) {
         row[String(year)] = null;
       } else {
         const cumulative = monthlyData
@@ -188,7 +188,7 @@ function buildChartCsvData(monthlyData: MonthStat[]): string {
   const dataRows = MONTHS.map((monthName, i) => {
     const monthNum = i + 1;
     const values = years.map((year) => {
-      if (year === currentYear && monthNum > currentMonth) return "";
+      if (year === currentYear && monthNum >= currentMonth) return "";
       const cumulative = monthlyData
         .filter((d) => d._id.year === year && d._id.month <= monthNum)
         .reduce((acc, d) => acc + d.total_distance / 1000, 0);
@@ -332,7 +332,7 @@ export default function StatsClient({ isWpUser }: { isWpUser: boolean }) {
       setMonthlyData(stats.data ?? []);
       setLastUpdate(stats.lastUpdate ?? null);
       const allYears = [...new Set((stats.data ?? []).map((d: MonthStat) => d._id.year))].sort() as number[];
-      setSelectedYears((prev) => (prev.size === 0 ? new Set(allYears) : prev));
+      setSelectedYears((prev) => (prev.size === 0 ? new Set(allYears.slice(-4)) : prev));
       setKudosData(kudos ?? []);
       setWeeklyStreak(streak);
       setDayOfWeek(dow ?? []);
