@@ -45,7 +45,7 @@ export default function DashboardNav() {
   return (
     <>
       {/* Desktop: inline links */}
-      <nav className="hidden md:flex items-center gap-1">
+      <nav className="hidden md:flex items-center gap-0.5">
         {NAV_LINKS.map(({ href, label, exact }) => {
           const isActive = isLinkActive(href, exact);
           return (
@@ -53,7 +53,7 @@ export default function DashboardNav() {
               key={href}
               href={href}
               className={cn(
-                "px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap",
+                "px-2 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap",
                 isActive
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted"
