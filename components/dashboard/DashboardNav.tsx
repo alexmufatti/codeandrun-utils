@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "@/lib/i18n/LanguageContext";
+import { Menu, X } from "lucide-react";
 
 export default function DashboardNav() {
   const pathname = usePathname();
   const { t } = useTranslations();
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
 
   const NAV_LINKS = [
     { href: "/dashboard/strava", label: t.nav.activities, exact: true },
@@ -25,55 +25,97 @@ export default function DashboardNav() {
   const isLinkActive = (href: string, exact?: boolean) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
 
-  const active = NAV_LINKS.find(({ href, exact }) => isLinkActive(href, exact));
-
+  // Close drawer on route change
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+    setOpen(false);
+  }, [pathname]);
+
+  // Prevent body scroll when drawer is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
     }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
 
   return (
-    <div className="relative" ref={ref}>
+    <>
+      {/* Desktop: inline links */}
+      <nav className="hidden md:flex items-center gap-1">
+        {NAV_LINKS.map(({ href, label, exact }) => {
+          const isActive = isLinkActive(href, exact);
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                "px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap",
+                isActive
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}
+            >
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Mobile: hamburger button */}
       <button
-        onClick={() => setOpen((o) => !o)}
-        className={cn(
-          "flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-          open
-            ? "bg-muted text-foreground"
-            : "text-muted-foreground hover:text-foreground hover:bg-muted"
-        )}
-        aria-expanded={open}
-        aria-haspopup="true"
+        onClick={() => setOpen(true)}
+        className="md:hidden flex items-center justify-center w-9 h-9 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        aria-label="Apri menu"
       >
-        <span className="hidden sm:inline">{active?.label ?? "Menu"}</span>
-        <svg
-          className={cn("h-4 w-4 transition-transform", open && "rotate-180")}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        <Menu className="h-5 w-5" />
       </button>
 
+      {/* Drawer backdrop */}
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 min-w-44 rounded-lg border border-border bg-background shadow-lg py-1">
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
+      {/* Drawer panel */}
+      <div
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-72 bg-background border-r border-border flex flex-col md:hidden transition-transform duration-300 ease-in-out",
+          open ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        {/* Drawer header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">🏃</span>
+            <span className="text-base font-semibold">CodeAndRun</span>
+          </div>
+          <button
+            onClick={() => setOpen(false)}
+            className="flex items-center justify-center w-8 h-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            aria-label="Chiudi menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Drawer links */}
+        <nav className="flex-1 overflow-y-auto py-3 px-3 flex flex-col gap-1">
           {NAV_LINKS.map(({ href, label, exact }) => {
             const isActive = isLinkActive(href, exact);
             return (
               <Link
                 key={href}
                 href={href}
-                onClick={() => setOpen(false)}
                 className={cn(
-                  "block px-4 py-2 text-sm transition-colors",
+                  "flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-primary/10 text-primary font-medium"
+                    ? "bg-primary/10 text-primary"
                     : "text-foreground hover:bg-muted"
                 )}
               >
@@ -81,8 +123,8 @@ export default function DashboardNav() {
               </Link>
             );
           })}
-        </div>
-      )}
-    </div>
+        </nav>
+      </div>
+    </>
   );
 }
