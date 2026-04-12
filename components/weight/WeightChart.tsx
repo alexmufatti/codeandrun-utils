@@ -109,7 +109,7 @@ export default function WeightChart({
   const weights = data.map((d) => d.weightKg);
   const minW = weights.length ? Math.min(...weights) : 50;
   const maxW = weights.length ? Math.max(...weights) : 100;
-  const padding = 2;
+  const padding = 0.5;
 
   const yMin = Math.floor(Math.min(minW, targetWeightKg ?? minW) - padding);
   const yMax = Math.ceil(Math.max(maxW, targetWeightKg ?? maxW) + padding);
@@ -121,7 +121,7 @@ export default function WeightChart({
           {t.weight.chartNoData}
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={380}>
           <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
             <XAxis
@@ -189,7 +189,7 @@ export default function WeightChart({
               type="monotone"
               dataKey="movingAvg"
               stroke="var(--run-accent)"
-              strokeWidth={2.5}
+              strokeWidth={1.5}
               dot={false}
               activeDot={{ r: 4, fill: "var(--run-accent)" }}
               connectNulls
