@@ -5,6 +5,8 @@ import logging
 import os
 from datetime import date, timedelta
 
+import urllib.request
+import urllib.error
 from garminconnect import Garmin, GarminConnectAuthenticationError
 from pymongo import MongoClient
 
@@ -21,6 +23,8 @@ MONGODB_DB = os.environ["MONGODB_DB"]  # same db name used by the Next.js app
 USER_EMAIL = os.environ["USER_EMAIL"]
 DAYS_BACK = int(os.environ.get("DAYS_BACK", "14"))
 TOKENSTORE = os.environ.get("TOKENSTORE", "/data/garmin_tokens")
+REPORT_APP_URL = os.environ.get("REPORT_APP_URL", "")  # e.g. http://web:3000
+PROCESS_QUEUE_SECRET = os.environ.get("PROCESS_QUEUE_SECRET", "")
 
 
 def get_user_id(mongo, email: str) -> str:
@@ -103,6 +107,35 @@ def sync_rest_hr(api: Garmin, collection, user_id: str, dates: list) -> None:
     log.info("RestHR: %d new, %d already present", added, skipped)
 
 
+def trigger_report(force: bool = False) -> None:
+    """Call the Next.js report endpoint after sync."""
+    if not REPORT_APP_URL or not PROCESS_QUEUE_SECRET:
+        log.info("REPORT_APP_URL or PROCESS_QUEUE_SECRET not set, skipping report trigger")
+        return
+
+    url = f"{REPORT_APP_URL}/api/report/send"
+    if force:
+        url += "?force=true"
+
+    req = urllib.request.Request(
+        url,
+        data=b"",
+        method="POST",
+        headers={
+            "x-cron-secret": PROCESS_QUEUE_SECRET,
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = resp.read().decode()
+            log.info("Report trigger response: %s", body)
+    except urllib.error.HTTPError as e:
+        log.warning("Report trigger HTTP error %d: %s", e.code, e.read().decode())
+    except Exception as e:
+        log.warning("Report trigger failed: %s", e)
+
+
 def main() -> None:
     today = date.today()
     dates = [(today - timedelta(days=i)).isoformat() for i in range(DAYS_BACK)]
@@ -119,7 +152,9 @@ def main() -> None:
     sync_rest_hr(api, db["resthrentries"], user_id, dates)
 
     mongo.close()
-    log.info("Done")
+    log.info("Garmin sync done")
+
+    trigger_report()
 
 
 if __name__ == "__main__":

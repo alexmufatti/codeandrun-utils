@@ -6,6 +6,7 @@ import WeightChart from "@/components/weight/WeightChart";
 import WeightStats from "@/components/weight/WeightStats";
 import WeightTarget from "@/components/weight/WeightTarget";
 import WeightImport from "@/components/weight/WeightImport";
+import WeightReport from "@/components/weight/WeightReport";
 import { calculateStats } from "@/lib/weight/calculations";
 import { useTranslations } from "@/lib/i18n/LanguageContext";
 import type { CalendarEvent } from "@/app/dashboard/hrv/HrvPageClient";
@@ -122,6 +123,9 @@ export default function WeightDashboard() {
 
         {/* CSV Import */}
         <WeightImport onSuccess={fetchData} />
+
+        {/* Email Report */}
+        <WeightReport />
       </main>
     </>
   );
