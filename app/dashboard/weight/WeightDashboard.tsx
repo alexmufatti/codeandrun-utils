@@ -9,7 +9,7 @@ import WeightImport from "@/components/weight/WeightImport";
 import WeightReport from "@/components/weight/WeightReport";
 import { calculateStats } from "@/lib/weight/calculations";
 import { useTranslations } from "@/lib/i18n/LanguageContext";
-import type { CalendarEvent } from "@/app/dashboard/hrv/HrvPageClient";
+import type { CalendarEvent } from "@/types/events";
 import type { PeriodDays, WeightEntry } from "@/types/weight";
 
 export default function WeightDashboard() {

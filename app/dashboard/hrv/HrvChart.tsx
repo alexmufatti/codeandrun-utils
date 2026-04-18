@@ -13,7 +13,7 @@ import {
   ResponsiveContainer,
   ReferenceArea,
 } from "recharts";
-import type { CalendarEvent } from "./HrvPageClient";
+import type { CalendarEvent } from "@/types/events";
 
 type HrvEntry = {
   calendarDate: string;

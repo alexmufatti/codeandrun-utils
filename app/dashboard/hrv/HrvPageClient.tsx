@@ -5,12 +5,8 @@ import { toast } from "sonner";
 import HrvChart from "./HrvChart";
 import RestHrChart from "./RestHrChart";
 
-export type CalendarEvent = {
-  _id: string;
-  description: string;
-  start_date: string;
-  end_date: string;
-};
+import type { CalendarEvent } from "@/types/events";
+export type { CalendarEvent };
 
 type Tab = "hrv" | "resthr" | "events";
 
