@@ -12,7 +12,7 @@ import {
   ReferenceArea,
 } from "recharts";
 import { useTranslations } from "@/lib/i18n/LanguageContext";
-import type { CalendarEvent } from "@/app/dashboard/hrv/HrvPageClient";
+import type { CalendarEvent } from "@/types/events";
 import type { PeriodDays } from "@/types/weight";
 
 interface ChartDataPoint {
