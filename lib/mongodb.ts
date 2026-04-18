@@ -30,7 +30,11 @@ async function connectDB(): Promise<typeof mongoose> {
   if (!cached.promise) {
     cached.promise = mongoose
       .connect(MONGODB_URI, { bufferCommands: false })
-      .then((m) => m);
+      .then((m) => m)
+      .catch((err) => {
+        cached.promise = null;
+        throw err;
+      });
   }
 
   cached.conn = await cached.promise;
