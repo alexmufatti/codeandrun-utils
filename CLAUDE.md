@@ -35,9 +35,9 @@ Strategy is JWT even with the MongoDB adapter — the adapter stores `users` and
 
 - **`lib/mongodb.ts`** — Mongoose singleton (global cache pattern) for app data
 - **`lib/auth.ts`** — Also instantiates a native `MongoClient` for the NextAuth adapter
-- DB name: `codeandrun`, Atlas cluster
-- Models: `models/WeightEntry.ts` (unique index on `{userId, date}`), `models/UserSettings.ts` (`targetWeightKg`)
-- Weight entries store dates as UTC midnight; API returns `YYYY-MM-DD` strings
+- DB name: `codeandrun-utils`, Atlas cluster
+- Models (all in `models/`): `WeightEntry` (unique `{userId,date}`), `UserSettings` (`targetWeightKg`), `HrvEntry`, `RestHrEntry`, `SleepEntry`, `StravaActivity` (strict:false, stores raw Strava JSON), `StravaConnection`, `StravaUpdate` (webhook queue), `StravaEvent`, `PersonalRecord`, `EmailReportSettings`
+- Dates: weight/Strava use UTC midnight `Date` objects; HRV/RestHR/Sleep use `calendarDate` string (`YYYY-MM-DD`)
 
 ### i18n
 
@@ -68,6 +68,18 @@ Pace and VDOT features are client-only (no API/DB). Weight tracker has API route
 - Server: `/data/utils/` contains `docker-compose.yml` and `.env.local`
 - Production: `apps.codeandrun.it` → reverse proxy → port 3002 → container port 3000
 
+### Date Handling
+
+Always use UTC when constructing date strings for chart ranges or DB queries — the API returns `YYYY-MM-DD` based on UTC midnight. Use `setUTCHours(0,0,0,0)` + `toISOString().split("T")[0]`, never `setHours` (local time).
+
+### Garmin Sync
+
+`garmin-sync/` — Python container that pulls Garmin data (HRV, RestHR, Sleep) and writes directly to MongoDB. Runs on a schedule; also calls `POST /api/report/send` with `x-cron-secret` header to trigger weekly email reports.
+
+### Email Report
+
+`lib/email/` — weekly health report (weight, HRV, RestHR, sleep, Strava runs). Settings in `models/EmailReportSettings.ts`. `POST /api/report/send` serves both cron (via `x-cron-secret: PROCESS_QUEUE_SECRET`) and authenticated UI calls. Requires env vars: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_SECURE`.
+
 ### Strava Integration
 
 Auth is Google-primary + Strava as an optional linked account (not a NextAuth provider).
@@ -78,7 +90,7 @@ Auth is Google-primary + Strava as an optional linked account (not a NextAuth pr
 - `DELETE /api/connect/strava/disconnect` — removes the connection
 - `app/dashboard/strava/` — page showing connection status; future home for activity list
 
-Strava access tokens expire in 6 hours. Before any Strava API call, use a `getStravaAccessToken(userId)` helper (to be implemented) that checks `expiresAt` and refreshes via `POST https://www.strava.com/oauth/token` with `grant_type: refresh_token`.
+Strava access tokens expire in 6 hours. `lib/strava/getAccessToken.ts` handles automatic refresh (refreshes if expiring within 60s). Use this helper before any Strava API call.
 
 ### Required Environment Variables
 
@@ -90,4 +102,17 @@ NEXTAUTH_SECRET
 NEXTAUTH_URL        # or trustHost: true handles reverse proxy
 STRAVA_CLIENT_ID
 STRAVA_CLIENT_SECRET
+STRAVA_VERIFY_TOKEN     # shared secret for Strava webhook subscription verification
+PROCESS_QUEUE_SECRET    # secret header for cron-triggered endpoints (/api/strava/process-queue, /api/report/send)
+WP_SITE_URL             # WordPress site URL for activity publishing
+WP_USERNAME
+WP_APP_PASSWORD
+WP_ALLOWED_USER_EMAIL   # only this email can access WP publishing features
+SMTP_HOST
+SMTP_PORT
+SMTP_USER
+SMTP_PASS
+SMTP_FROM
+SMTP_SECURE             # "true" for TLS
+G_STATICMAP_KEY         # Google Static Maps API key (optional, for route maps in WP posts)
 ```

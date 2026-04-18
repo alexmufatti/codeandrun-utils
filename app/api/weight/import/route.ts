@@ -30,6 +30,9 @@ export async function POST(req: NextRequest) {
     if (!row.date || typeof row.weightKg !== "number") {
       return NextResponse.json({ error: "Formato dati non valido" }, { status: 400 });
     }
+    if (isNaN(new Date(row.date).getTime())) {
+      return NextResponse.json({ error: `Data non valida: ${row.date}` }, { status: 400 });
+    }
     if (row.weightKg < 30 || row.weightKg > 300) {
       return NextResponse.json(
         { error: `Peso fuori range (30-300 kg): ${row.weightKg} in data ${row.date}` },
