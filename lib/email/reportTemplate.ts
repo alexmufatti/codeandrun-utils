@@ -50,8 +50,22 @@ function statusColor(status: string | null): string {
 const BASE = "#1E3A8A";
 const ACCENT = "#FC4C02";
 
+function fmtSleepDuration(sec: number | null): string {
+  if (sec === null) return "—";
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  return `${h}h ${m}m`;
+}
+
+function sleepScoreColor(score: number | null): string {
+  if (score === null) return "#888";
+  if (score >= 80) return "#10B981";
+  if (score >= 60) return "#F59E0B";
+  return "#EF4444";
+}
+
 export function buildReportHtml(data: ReportData): string {
-  const { weight, hrv, restHr, activities, generatedAt } = data;
+  const { weight, hrv, restHr, sleep, activities, generatedAt } = data;
   const dateLabel = generatedAt.toLocaleDateString("it-IT", {
     day: "numeric",
     month: "long",
@@ -201,6 +215,67 @@ export function buildReportHtml(data: ReportData): string {
         </td>
       </tr>
     </table>
+
+    <!-- ── SONNO ── -->
+    <h2 style="margin:0 0 12px;font-size:15px;font-weight:700;color:${BASE};border-bottom:2px solid ${ACCENT};padding-bottom:6px;">😴 Sonno</h2>
+    ${sleep.entries.length > 0 ? `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+      <tr>
+        <td style="width:25%;vertical-align:top;padding-right:4px;">
+          <div style="background:#f8f9fb;border-radius:8px;padding:12px 16px;">
+            <div style="font-size:11px;text-transform:uppercase;color:#888;letter-spacing:.5px;margin-bottom:4px;">Durata media</div>
+            <div style="font-size:22px;font-weight:800;color:${BASE};">${fmtSleepDuration(sleep.avgDurationSec)}</div>
+          </div>
+        </td>
+        <td style="width:25%;vertical-align:top;padding:0 4px;">
+          <div style="background:#f8f9fb;border-radius:8px;padding:12px 16px;">
+            <div style="font-size:11px;text-transform:uppercase;color:#888;letter-spacing:.5px;margin-bottom:4px;">Score medio</div>
+            <div style="font-size:22px;font-weight:800;color:${sleepScoreColor(sleep.avgScore)};">${fmt(sleep.avgScore)}</div>
+          </div>
+        </td>
+        <td style="width:25%;vertical-align:top;padding:0 4px;">
+          <div style="background:#f8f9fb;border-radius:8px;padding:12px 16px;">
+            <div style="font-size:11px;text-transform:uppercase;color:#888;letter-spacing:.5px;margin-bottom:4px;">Deep sleep</div>
+            <div style="font-size:22px;font-weight:800;color:#3B82F6;">${fmt(sleep.avgDeepPct, "%")}</div>
+          </div>
+        </td>
+        <td style="width:25%;vertical-align:top;padding-left:4px;">
+          <div style="background:#f8f9fb;border-radius:8px;padding:12px 16px;">
+            <div style="font-size:11px;text-transform:uppercase;color:#888;letter-spacing:.5px;margin-bottom:4px;">REM</div>
+            <div style="font-size:22px;font-weight:800;color:#8B5CF6;">${fmt(sleep.avgRemPct, "%")}</div>
+          </div>
+        </td>
+      </tr>
+    </table>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;border-radius:6px;overflow:hidden;border:1px solid #f0f0f0;">
+      <tr style="background:#f8f9fb;">
+        <th style="padding:6px 8px;font-size:11px;text-align:left;color:#888;font-weight:600;text-transform:uppercase;">Data</th>
+        <th style="padding:6px 8px;font-size:11px;text-align:right;color:#888;font-weight:600;text-transform:uppercase;">Durata</th>
+        <th style="padding:6px 8px;font-size:11px;text-align:right;color:#888;font-weight:600;text-transform:uppercase;">Score</th>
+        <th style="padding:6px 8px;font-size:11px;text-align:right;color:#888;font-weight:600;text-transform:uppercase;">Deep</th>
+        <th style="padding:6px 8px;font-size:11px;text-align:right;color:#888;font-weight:600;text-transform:uppercase;">REM</th>
+        <th style="padding:6px 8px;font-size:11px;text-align:right;color:#888;font-weight:600;text-transform:uppercase;">Leggero</th>
+        <th style="padding:6px 8px;font-size:11px;text-align:right;color:#888;font-weight:600;text-transform:uppercase;">Risvegli</th>
+        <th style="padding:6px 8px;font-size:11px;text-align:right;color:#888;font-weight:600;text-transform:uppercase;">Qualità</th>
+      </tr>
+      ${sleep.entries
+        .slice()
+        .reverse()
+        .map(
+          (e) => `
+      <tr>
+        <td style="padding:4px 8px;border-bottom:1px solid #f0f0f0;font-size:13px;">${e.date}</td>
+        <td style="padding:4px 8px;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right;font-weight:600;">${fmtSleepDuration(e.durationSec)}</td>
+        <td style="padding:4px 8px;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right;font-weight:600;color:${sleepScoreColor(e.score)};">${fmt(e.score)}</td>
+        <td style="padding:4px 8px;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right;">${e.deepSec !== null && e.durationSec ? Math.round(e.deepSec / e.durationSec * 100) + "%" : "—"}</td>
+        <td style="padding:4px 8px;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right;">${e.remSec !== null && e.durationSec ? Math.round(e.remSec / e.durationSec * 100) + "%" : "—"}</td>
+        <td style="padding:4px 8px;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right;">${e.lightSec !== null && e.durationSec ? Math.round(e.lightSec / e.durationSec * 100) + "%" : "—"}</td>
+        <td style="padding:4px 8px;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right;">${fmt(e.awakenings)}</td>
+        <td style="padding:4px 8px;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right;">${fmt(e.perceivedQuality)}</td>
+      </tr>`
+        )
+        .join("")}
+    </table>` : `<p style="color:#888;font-size:13px;margin:0 0 24px;">Nessun dato sonno negli ultimi 7 giorni.</p>`}
 
     <!-- ── ATTIVITÀ STRAVA ── -->
     <h2 style="margin:0 0 12px;font-size:15px;font-weight:700;color:${BASE};border-bottom:2px solid ${ACCENT};padding-bottom:6px;">🏃 Corse (ultimi 7 giorni)</h2>

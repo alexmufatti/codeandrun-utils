@@ -13,6 +13,7 @@ export const translations = {
       activities: "Attività",
       runningStats: "Stats Running",
       hrvRestHr: "HRV / FC",
+      sleep: "Sonno",
     },
     home: {
       tagline:
@@ -218,6 +219,7 @@ export const translations = {
       activities: "Activities",
       runningStats: "Running Stats",
       hrvRestHr: "HRV / HR",
+      sleep: "Sleep",
     },
     home: {
       tagline:

@@ -16,6 +16,7 @@ export default function DashboardNav() {
     { href: "/dashboard/strava", label: t.nav.activities, exact: true },
     { href: "/dashboard/strava/stats", label: t.nav.runningStats, exact: false },
     { href: "/dashboard/hrv", label: t.nav.hrvRestHr, exact: false },
+    { href: "/dashboard/sleep", label: t.nav.sleep, exact: false },
     { href: "/dashboard/weight", label: t.nav.weightTracker },
     { href: "/dashboard/pace", label: t.nav.racePlanner },
     { href: "/dashboard/vdot", label: t.nav.trainingZones },

@@ -4,6 +4,7 @@ import HrvEntry from "@/models/HrvEntry";
 import RestHrEntry from "@/models/RestHrEntry";
 import StravaActivity from "@/models/StravaActivity";
 import UserSettings from "@/models/UserSettings";
+import SleepEntry from "@/models/SleepEntry";
 
 export interface WeightReportData {
   current: number | null;
@@ -40,10 +41,28 @@ export interface StravaActivityData {
   averageHeartrate: number | null;
 }
 
+export interface SleepReportData {
+  avgDurationSec: number | null;
+  avgScore: number | null;
+  avgDeepPct: number | null;
+  avgRemPct: number | null;
+  entries: {
+    date: string;
+    durationSec: number | null;
+    score: number | null;
+    deepSec: number | null;
+    remSec: number | null;
+    lightSec: number | null;
+    awakenings: number | null;
+    perceivedQuality: number | null;
+  }[];
+}
+
 export interface ReportData {
   weight: WeightReportData;
   hrv: HrvReportData;
   restHr: RestHrReportData;
+  sleep: SleepReportData;
   activities: StravaActivityData[];
   periodDays: number;
   generatedAt: Date;
@@ -66,7 +85,7 @@ export async function gatherReportData(userId: string): Promise<ReportData> {
   const since = sevenDaysAgo();
   const sinceStr = toDateStr(since);
 
-  const [weightEntries, settings, hrvEntries, restHrEntries, stravaActivities] =
+  const [weightEntries, settings, hrvEntries, restHrEntries, stravaActivities, sleepEntries] =
     await Promise.all([
       WeightEntry.find({ userId, date: { $gte: since } })
         .sort({ date: 1 })
@@ -84,6 +103,9 @@ export async function gatherReportData(userId: string): Promise<ReportData> {
         type: { $in: ["Run", "TrailRun", "VirtualRun"] },
       })
         .sort({ start_date: -1 })
+        .lean(),
+      SleepEntry.find({ userId, calendarDate: { $gte: sinceStr } })
+        .sort({ calendarDate: 1 })
         .lean(),
     ]);
 
@@ -143,6 +165,46 @@ export async function gatherReportData(userId: string): Promise<ReportData> {
   const restMin7d = rValues.length > 0 ? Math.min(...rValues) : null;
   const restMax7d = rValues.length > 0 ? Math.max(...rValues) : null;
 
+  // ── Sleep ─────────────────────────────────────────────────────────────────
+  const sEntries = sleepEntries.map((e) => ({
+    date: e.calendarDate as string,
+    durationSec: (e.sleepTimeSeconds as number) ?? null,
+    score: (e.sleepScore as number) ?? null,
+    deepSec: (e.deepSleepSeconds as number) ?? null,
+    remSec: (e.remSleepSeconds as number) ?? null,
+    lightSec: (e.lightSleepSeconds as number) ?? null,
+    awakenings: (e.awakenings as number) ?? null,
+    perceivedQuality: (e.perceivedQuality as number) ?? null,
+  }));
+
+  const sWithDuration = sEntries.filter((e) => e.durationSec !== null);
+  const avgDurationSec =
+    sWithDuration.length > 0
+      ? Math.round(sWithDuration.reduce((a, e) => a + e.durationSec!, 0) / sWithDuration.length)
+      : null;
+
+  const sWithScore = sEntries.filter((e) => e.score !== null);
+  const avgScore =
+    sWithScore.length > 0
+      ? parseFloat((sWithScore.reduce((a, e) => a + e.score!, 0) / sWithScore.length).toFixed(1))
+      : null;
+
+  const sWithDeep = sEntries.filter((e) => e.durationSec !== null && e.deepSec !== null);
+  const avgDeepPct =
+    sWithDeep.length > 0
+      ? parseFloat(
+          (sWithDeep.reduce((a, e) => a + e.deepSec! / e.durationSec!, 0) / sWithDeep.length * 100).toFixed(1)
+        )
+      : null;
+
+  const sWithRem = sEntries.filter((e) => e.durationSec !== null && e.remSec !== null);
+  const avgRemPct =
+    sWithRem.length > 0
+      ? parseFloat(
+          (sWithRem.reduce((a, e) => a + e.remSec! / e.durationSec!, 0) / sWithRem.length * 100).toFixed(1)
+        )
+      : null;
+
   // ── Strava activities ─────────────────────────────────────────────────────
   const activities: StravaActivityData[] = stravaActivities.map((a) => ({
     id: a.id as number,
@@ -169,6 +231,13 @@ export async function gatherReportData(userId: string): Promise<ReportData> {
       min7d: restMin7d,
       max7d: restMax7d,
       entries: rEntries,
+    },
+    sleep: {
+      avgDurationSec,
+      avgScore,
+      avgDeepPct,
+      avgRemPct,
+      entries: sEntries,
     },
     activities,
     periodDays: 7,
