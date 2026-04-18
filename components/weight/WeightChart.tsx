@@ -26,15 +26,13 @@ function buildFullDateRange(data: ChartDataPoint[], period: PeriodDays): FullDat
   const byDate = new Map(data.map((d) => [d.date, d.weightKg]));
 
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  today.setUTCHours(0, 0, 0, 0);
 
   const dates: string[] = [];
   for (let i = period - 1; i >= 0; i--) {
     const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    dates.push(
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-    );
+    d.setUTCDate(d.getUTCDate() - i);
+    dates.push(d.toISOString().split("T")[0]);
   }
 
   // Moving average: centered 7-day window (±3 days), only on days with actual data
