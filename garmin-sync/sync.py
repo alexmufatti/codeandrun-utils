@@ -5,6 +5,8 @@ import logging
 import os
 from datetime import date, timedelta
 
+import urllib.request
+import urllib.error
 from garminconnect import Garmin, GarminConnectAuthenticationError
 from pymongo import MongoClient
 
@@ -20,7 +22,10 @@ MONGODB_URI = os.environ["MONGODB_URI"]
 MONGODB_DB = os.environ["MONGODB_DB"]  # same db name used by the Next.js app
 USER_EMAIL = os.environ["USER_EMAIL"]
 DAYS_BACK = int(os.environ.get("DAYS_BACK", "14"))
+SLEEP_DAYS_BACK = int(os.environ.get("SLEEP_DAYS_BACK", "365"))
 TOKENSTORE = os.environ.get("TOKENSTORE", "/data/garmin_tokens")
+REPORT_APP_URL = os.environ.get("REPORT_APP_URL", "")  # e.g. http://web:3000
+PROCESS_QUEUE_SECRET = os.environ.get("PROCESS_QUEUE_SECRET", "")
 
 
 def get_user_id(mongo, email: str) -> str:
@@ -74,6 +79,49 @@ def sync_hrv(api: Garmin, collection, user_id: str, dates: list) -> None:
     log.info("HRV: %d new, %d already present", added, skipped)
 
 
+def sync_sleep(api: Garmin, collection, user_id: str, dates: list) -> None:
+    added = skipped = 0
+    for date_str in dates:
+        try:
+            data = api.get_sleep_data(date_str)
+            dto = (data or {}).get("dailySleepDTO")
+            if not dto or not dto.get("calendarDate"):
+                continue
+        except Exception as e:
+            log.warning("Sleep fetch failed for %s: %s", date_str, e)
+            continue
+
+        cal_date = dto["calendarDate"]
+        sleep_scores = dto.get("sleepScores") or {}
+        overall = sleep_scores.get("overall") or {}
+        sleep_score = overall.get("value")
+
+        doc = {
+            "userId": user_id,
+            "calendarDate": cal_date,
+            "sleepTimeSeconds": dto.get("sleepTimeSeconds"),
+            "deepSleepSeconds": dto.get("deepSleepSeconds"),
+            "lightSleepSeconds": dto.get("lightSleepSeconds"),
+            "remSleepSeconds": dto.get("remSleepSeconds"),
+            "awakeSleepSeconds": dto.get("awakeSleepSeconds"),
+            "averageSpO2Value": dto.get("averageSpO2Value"),
+            "sleepScore": sleep_score,
+            "averageRespirationValue": dto.get("averageRespirationValue"),
+        }
+
+        result = collection.update_one(
+            {"userId": user_id, "calendarDate": cal_date},
+            {"$setOnInsert": doc},
+            upsert=True,
+        )
+        if result.upserted_id:
+            added += 1
+        else:
+            skipped += 1
+
+    log.info("Sleep: %d new, %d already present", added, skipped)
+
+
 def sync_rest_hr(api: Garmin, collection, user_id: str, dates: list) -> None:
     added = skipped = 0
     for date_str in dates:
@@ -103,10 +151,41 @@ def sync_rest_hr(api: Garmin, collection, user_id: str, dates: list) -> None:
     log.info("RestHR: %d new, %d already present", added, skipped)
 
 
+def trigger_report(force: bool = False) -> None:
+    """Call the Next.js report endpoint after sync."""
+    if not REPORT_APP_URL or not PROCESS_QUEUE_SECRET:
+        log.info("REPORT_APP_URL or PROCESS_QUEUE_SECRET not set, skipping report trigger")
+        return
+
+    url = f"{REPORT_APP_URL}/api/report/send"
+    if force:
+        url += "?force=true"
+
+    req = urllib.request.Request(
+        url,
+        data=b"",
+        method="POST",
+        headers={
+            "x-cron-secret": PROCESS_QUEUE_SECRET,
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = resp.read().decode()
+            log.info("Report trigger response: %s", body)
+    except urllib.error.HTTPError as e:
+        log.warning("Report trigger HTTP error %d: %s", e.code, e.read().decode())
+    except Exception as e:
+        log.warning("Report trigger failed: %s", e)
+
+
 def main() -> None:
     today = date.today()
     dates = [(today - timedelta(days=i)).isoformat() for i in range(DAYS_BACK)]
-    log.info("Syncing %d days (%s → %s)", DAYS_BACK, dates[-1], dates[0])
+    sleep_dates = [(today - timedelta(days=i)).isoformat() for i in range(SLEEP_DAYS_BACK)]
+    log.info("Syncing %d days HRV/RestHR (%s → %s)", DAYS_BACK, dates[-1], dates[0])
+    log.info("Syncing %d days Sleep (%s → %s)", SLEEP_DAYS_BACK, sleep_dates[-1], sleep_dates[0])
 
     api = garmin_login()
 
@@ -117,9 +196,12 @@ def main() -> None:
 
     sync_hrv(api, db["hrventries"], user_id, dates)
     sync_rest_hr(api, db["resthrentries"], user_id, dates)
+    sync_sleep(api, db["sleepentries"], user_id, sleep_dates)
 
     mongo.close()
-    log.info("Done")
+    log.info("Garmin sync done")
+
+    trigger_report()
 
 
 if __name__ == "__main__":
