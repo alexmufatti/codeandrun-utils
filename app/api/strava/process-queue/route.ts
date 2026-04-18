@@ -18,15 +18,17 @@ export async function POST(req: NextRequest) {
     .limit(50)
     .lean();
 
+  const ownerIds = [...new Set(updates.map((u) => u.owner_id))];
+  const connections = await StravaConnection.find({ athleteId: { $in: ownerIds } }).lean();
+  const connMap = new Map(connections.map((c) => [c.athleteId, c]));
+
   let processed = 0;
   let errors = 0;
 
   for (const update of updates) {
     try {
       if (update.object_type === "activity") {
-        const conn = await StravaConnection.findOne({
-          athleteId: update.owner_id,
-        }).lean();
+        const conn = connMap.get(update.owner_id);
 
         if (conn) {
           if (update.aspect_type === "delete") {

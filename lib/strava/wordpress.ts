@@ -71,7 +71,9 @@ async function getOrCreateCategory(
   const res = await fetch(`${wpUrl}/wp-json/wp/v2/categories?per_page=100`, {
     headers: { Authorization: `Basic ${auth}` },
   });
+  if (!res.ok) throw new Error(`Failed to fetch WP categories: ${res.status}`);
   const cats = await res.json();
+  if (!Array.isArray(cats)) throw new Error("Unexpected WP categories response");
   const existing = cats.find(
     (c: any) => c.name.toLowerCase() === name.toLowerCase()
   );
