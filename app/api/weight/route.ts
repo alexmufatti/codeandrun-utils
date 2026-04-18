@@ -55,6 +55,9 @@ export async function POST(req: NextRequest) {
   }
 
   const parsedDate = new Date(date);
+  if (isNaN(parsedDate.getTime())) {
+    return NextResponse.json({ error: "Invalid date format" }, { status: 400 });
+  }
   parsedDate.setUTCHours(0, 0, 0, 0);
 
   const today = new Date();
