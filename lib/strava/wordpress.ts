@@ -125,16 +125,11 @@ export async function createWordPressDraft(
     content += `<!-- wp:heading -->\n<h2 class="wp-block-heading">${heading}</h2>\n<!-- /wp:heading -->\n\n`;
 
     const media = mediaMap.get(activity.id);
-    if (media) {
-      content +=
-        `<!-- wp:image {"id":${media.id},"sizeSlug":"large","linkDestination":"none"} -->\n` +
-        `<figure class="wp-block-image size-large"><img src="${media.url}" alt="map" class="wp-image-${media.id}"/></figure>\n` +
-        `<!-- /wp:image -->\n\n`;
-    }
+    const imageAttr = media ? ` image_id="${media.id}"` : "";
 
     content +=
       `<!-- wp:shortcode -->\n` +
-      `[strava id="${activity.id}" embed_id="${activity.embed_token}"]\n` +
+      `[strava id="${activity.id}" embed_id="${activity.embed_token}"${imageAttr}]\n` +
       `<!-- /wp:shortcode -->\n\n`;
   }
 
@@ -147,6 +142,7 @@ export async function createWordPressDraft(
   // Metadati training
   const trainingTypes = sorted.map((a) => trainingEmoji(a.name)).join(",");
   const trainingFeelings = sorted.map(() => "😭").join(",");
+  const totalKm = sorted.reduce((sum, a) => sum + (a.distance ?? 0), 0) / 1000;
 
   const postDate = mondayOf(weeks[0], year);
 
@@ -162,7 +158,12 @@ export async function createWordPressDraft(
       status: "draft",
       date: postDate,
       categories: [sportId, runningId],
-      meta: { training_types: trainingTypes, training_feelings: trainingFeelings },
+      meta: {
+        training_types: trainingTypes,
+        training_feelings: trainingFeelings,
+        car_week: `W${weeks[0]}`,
+        car_km: Math.round(totalKm).toString(),
+      },
     }),
   });
 
