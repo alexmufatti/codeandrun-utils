@@ -48,7 +48,15 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
-export default function RestHrChart({ events }: { events: CalendarEvent[] }) {
+export default function RestHrChart({
+  events,
+  apiBase = "/api",
+  readOnly = false,
+}: {
+  events: CalendarEvent[];
+  apiBase?: string;
+  readOnly?: boolean;
+}) {
   const [period, setPeriod] = useState<Period>("3m");
   const [data, setData] = useState<RestHrEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +66,7 @@ export default function RestHrChart({ events }: { events: CalendarEvent[] }) {
   const fetchData = useCallback(async (p: Period) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/resthr?from=${fromDate(p)}`);
+      const res = await fetch(`${apiBase}/resthr?from=${fromDate(p)}`);
       const raw: RestHrEntry[] = await res.json();
       const withAvg = raw.map((x, idx) => {
         const samples = Math.min(5, idx + 1);
@@ -71,7 +79,7 @@ export default function RestHrChart({ events }: { events: CalendarEvent[] }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiBase]);
 
   useEffect(() => {
     fetchData(period);
@@ -208,34 +216,36 @@ export default function RestHrChart({ events }: { events: CalendarEvent[] }) {
       )}
 
       {/* Import */}
-      <div className="flex flex-col gap-2 mt-2">
-        <p className="text-xs text-muted-foreground">
-          Incolla JSON da{" "}
-          <a
-            href="https://connect.garmin.com/modern/report/60/wellness/last_seven_days"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline"
+      {!readOnly && (
+        <div className="flex flex-col gap-2 mt-2">
+          <p className="text-xs text-muted-foreground">
+            Incolla JSON da{" "}
+            <a
+              href="https://connect.garmin.com/modern/report/60/wellness/last_seven_days"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline"
+            >
+              Garmin Connect
+            </a>{" "}
+            (formato array con <code>calendarDate</code> e <code>values.restingHR</code>)
+          </p>
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            rows={4}
+            placeholder='[{ "calendarDate": "2024-01-01", "values": { "restingHR": 42 } }]'
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+          />
+          <button
+            onClick={saveData}
+            disabled={saving || !input.trim()}
+            className="self-end rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
           >
-            Garmin Connect
-          </a>{" "}
-          (formato array con <code>calendarDate</code> e <code>values.restingHR</code>)
-        </p>
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          rows={4}
-          placeholder='[{ "calendarDate": "2024-01-01", "values": { "restingHR": 42 } }]'
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-y"
-        />
-        <button
-          onClick={saveData}
-          disabled={saving || !input.trim()}
-          className="self-end rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-        >
-          {saving ? "Salvataggio..." : "Salva dati"}
-        </button>
-      </div>
+            {saving ? "Salvataggio..." : "Salva dati"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

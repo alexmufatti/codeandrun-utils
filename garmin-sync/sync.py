@@ -66,9 +66,13 @@ def sync_hrv(api: Garmin, collection, user_id: str, dates: list) -> None:
             cal_date = s.get("calendarDate")
             if not cal_date:
                 continue
+            hrv_fields = {k: v for k, v in s.items() if k not in ("userId", "calendarDate")}
             result = collection.update_one(
                 {"userId": user_id, "calendarDate": cal_date},
-                {"$setOnInsert": {"userId": user_id, **s}},
+                {
+                    "$set": hrv_fields,
+                    "$setOnInsert": {"userId": user_id, "calendarDate": cal_date},
+                },
                 upsert=True,
             )
             if result.upserted_id:
@@ -96,9 +100,7 @@ def sync_sleep(api: Garmin, collection, user_id: str, dates: list) -> None:
         overall = sleep_scores.get("overall") or {}
         sleep_score = overall.get("value")
 
-        doc = {
-            "userId": user_id,
-            "calendarDate": cal_date,
+        garmin_fields = {
             "sleepTimeSeconds": dto.get("sleepTimeSeconds"),
             "deepSleepSeconds": dto.get("deepSleepSeconds"),
             "lightSleepSeconds": dto.get("lightSleepSeconds"),
@@ -111,7 +113,10 @@ def sync_sleep(api: Garmin, collection, user_id: str, dates: list) -> None:
 
         result = collection.update_one(
             {"userId": user_id, "calendarDate": cal_date},
-            {"$setOnInsert": doc},
+            {
+                "$set": garmin_fields,
+                "$setOnInsert": {"userId": user_id, "calendarDate": cal_date},
+            },
             upsert=True,
         )
         if result.upserted_id:
@@ -136,11 +141,10 @@ def sync_rest_hr(api: Garmin, collection, user_id: str, dates: list) -> None:
 
         result = collection.update_one(
             {"userId": user_id, "calendarDate": date_str},
-            {"$setOnInsert": {
-                "userId": user_id,
-                "calendarDate": date_str,
-                "values": {"restingHR": resting_hr},
-            }},
+            {
+                "$set": {"values": {"restingHR": resting_hr}},
+                "$setOnInsert": {"userId": user_id, "calendarDate": date_str},
+            },
             upsert=True,
         )
         if result.upserted_id:

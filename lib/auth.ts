@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import { MongoDBAdapter } from "@auth/mongodb-adapter";
 import { MongoClient } from "mongodb";
 import { authConfig } from "@/auth.config";
+import { isWordPressUser } from "@/lib/wordpress-auth";
 
 const MONGODB_URI = process.env.MONGODB_URI!;
 
@@ -29,6 +30,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     session({ session, token }) {
       if (session.user && token.id) {
         session.user.id = token.id as string;
+      }
+      if (session.user) {
+        (session.user as typeof session.user & { isWpUser: boolean }).isWpUser =
+          isWordPressUser(session.user.email);
       }
       return session;
     },

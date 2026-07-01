@@ -300,7 +300,15 @@ function YearTable({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function StatsClient({ isWpUser }: { isWpUser: boolean }) {
+export default function StatsClient({
+  isWpUser,
+  apiBase = "/api",
+  readOnly = false,
+}: {
+  isWpUser: boolean;
+  apiBase?: string;
+  readOnly?: boolean;
+}) {
   const [monthlyData, setMonthlyData] = useState<MonthStat[]>([]);
   const [kudosData, setKudosData] = useState<KudosStat[]>([]);
   const [weeklyStreak, setWeeklyStreak] = useState<WeeklyStreak | null>(null);
@@ -316,11 +324,11 @@ export default function StatsClient({ isWpUser }: { isWpUser: boolean }) {
     setLoading(true);
     try {
       const [statsRes, kudosRes, streakRes, dowRes, topRes] = await Promise.all([
-        fetch("/api/strava/stats"),
-        fetch("/api/strava/stats/kudos"),
-        fetch("/api/strava/stats/weekly-streak"),
-        fetch("/api/strava/stats/day-of-week"),
-        fetch("/api/strava/stats/top-runs"),
+        fetch(`${apiBase}/strava/stats`),
+        fetch(`${apiBase}/strava/stats/kudos`),
+        fetch(`${apiBase}/strava/stats/weekly-streak`),
+        fetch(`${apiBase}/strava/stats/day-of-week`),
+        fetch(`${apiBase}/strava/stats/top-runs`),
       ]);
       const [stats, kudos, streak, dow, top] = await Promise.all([
         statsRes.json(),
@@ -340,7 +348,7 @@ export default function StatsClient({ isWpUser }: { isWpUser: boolean }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiBase]);
 
   useEffect(() => {
     fetchAll();
@@ -369,21 +377,12 @@ export default function StatsClient({ isWpUser }: { isWpUser: boolean }) {
       const res = await fetch("/api/strava/stats/publish", { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast.success("Pagina Running aggiornata!", {
-        description: (
-          <a
-            href={data.pageUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline"
-          >
-            {data.pageUrl}
-          </a>
-        ) as any,
+      toast.success("Statistiche salvate su CDN", {
+        description: "Esegui deploy.sh per aggiornare la pagina Running su codeandrun.it",
         duration: 8000,
       });
     } catch (err: any) {
-      toast.error("Errore aggiornamento pagina", { description: err.message });
+      toast.error("Errore aggiornamento statistiche", { description: err.message });
     } finally {
       setPublishing(false);
     }
@@ -467,13 +466,13 @@ export default function StatsClient({ isWpUser }: { isWpUser: boolean }) {
             disabled={publishing}
             className="rounded-md bg-[#FC4C02] px-4 py-2 text-sm font-medium text-white hover:bg-[#e04400] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {publishing ? "Pubblicazione..." : "Aggiorna pagina Running →"}
+            {publishing ? "Salvataggio..." : "Aggiorna statistiche Running →"}
           </button>
         )}
       </div>
 
       {/* Record personali */}
-      <PersonalRecordsManager />
+      {!readOnly && <PersonalRecordsManager />}
 
       {/* Grafico cumulativo */}
       <div className="rounded-xl border border-border bg-card p-5">
@@ -519,17 +518,28 @@ export default function StatsClient({ isWpUser }: { isWpUser: boolean }) {
         <ResponsiveContainer width="100%" height={340}>
           <LineChart data={forecastRows} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis dataKey="month" tick={{ fontSize: 12 }} tickLine={false} />
-            <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+            <XAxis
+              dataKey="month"
+              tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+              tickLine={false}
+              axisLine={{ stroke: "var(--border)" }}
+            />
+            <YAxis
+              tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+              tickLine={false}
+              axisLine={false}
+            />
             <Tooltip
               contentStyle={{
-                backgroundColor: "var(--background)",
+                backgroundColor: "var(--card)",
                 border: "1px solid var(--border)",
                 borderRadius: "8px",
                 fontSize: "13px",
+                color: "var(--foreground)",
               }}
+              cursor={{ stroke: "var(--border)" }}
             />
-            <Legend />
+            <Legend wrapperStyle={{ color: "var(--muted-foreground)", fontSize: "13px" }} />
             {years.map((year, i) =>
               visibleYears.includes(year) ? (
                 <Line

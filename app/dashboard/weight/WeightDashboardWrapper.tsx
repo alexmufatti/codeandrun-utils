@@ -13,6 +13,12 @@ const WeightDashboard = dynamic(() => import("./WeightDashboard"), {
   ),
 });
 
-export default function WeightDashboardWrapper() {
-  return <WeightDashboard />;
+export default function WeightDashboardWrapper({
+  apiBase,
+  readOnly,
+}: {
+  apiBase?: string;
+  readOnly?: boolean;
+}) {
+  return <WeightDashboard apiBase={apiBase} readOnly={readOnly} />;
 }

@@ -65,7 +65,15 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
-export default function HrvChart({ events }: { events: CalendarEvent[] }) {
+export default function HrvChart({
+  events,
+  apiBase = "/api",
+  readOnly = false,
+}: {
+  events: CalendarEvent[];
+  apiBase?: string;
+  readOnly?: boolean;
+}) {
   const [period, setPeriod] = useState<Period>("3m");
   const [data, setData] = useState<HrvEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,13 +84,13 @@ export default function HrvChart({ events }: { events: CalendarEvent[] }) {
   const fetchData = useCallback(async (p: Period) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/hrv?from=${fromDate(p)}`);
+      const res = await fetch(`${apiBase}/hrv?from=${fromDate(p)}`);
       const json = await res.json();
       setData(json.hrv ?? []);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiBase]);
 
   useEffect(() => {
     fetchData(period);
@@ -135,7 +143,7 @@ export default function HrvChart({ events }: { events: CalendarEvent[] }) {
     }
     setSaving(true);
     try {
-      const res = await fetch("/api/hrv", {
+      const res = await fetch(`${apiBase}/hrv`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(summaries),
@@ -276,34 +284,36 @@ export default function HrvChart({ events }: { events: CalendarEvent[] }) {
       )}
 
       {/* Import */}
-      <div className="flex flex-col gap-2 mt-2">
-        <p className="text-xs text-muted-foreground">
-          Incolla JSON da{" "}
-          <a
-            href="https://connect.garmin.com/modern/report/-34/all/last_seven_days"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline"
+      {!readOnly && (
+        <div className="flex flex-col gap-2 mt-2">
+          <p className="text-xs text-muted-foreground">
+            Incolla JSON da{" "}
+            <a
+              href="https://connect.garmin.com/modern/report/-34/all/last_seven_days"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline"
+            >
+              Garmin Connect
+            </a>{" "}
+            (formato <code>{"{ hrvSummaries: [...] }"}</code>)
+          </p>
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            rows={4}
+            placeholder='{ "hrvSummaries": [...] }'
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+          />
+          <button
+            onClick={saveData}
+            disabled={saving || !input.trim()}
+            className="self-end rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
           >
-            Garmin Connect
-          </a>{" "}
-          (formato <code>{"{ hrvSummaries: [...] }"}</code>)
-        </p>
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          rows={4}
-          placeholder='{ "hrvSummaries": [...] }'
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-y"
-        />
-        <button
-          onClick={saveData}
-          disabled={saving || !input.trim()}
-          className="self-end rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-        >
-          {saving ? "Salvataggio..." : "Salva dati"}
-        </button>
-      </div>
+            {saving ? "Salvataggio..." : "Salva dati"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

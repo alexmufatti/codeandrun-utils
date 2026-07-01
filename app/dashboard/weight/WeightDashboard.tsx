@@ -12,7 +12,13 @@ import { useTranslations } from "@/lib/i18n/LanguageContext";
 import type { CalendarEvent } from "@/types/events";
 import type { PeriodDays, WeightEntry } from "@/types/weight";
 
-export default function WeightDashboard() {
+export default function WeightDashboard({
+  apiBase = "/api",
+  readOnly = false,
+}: {
+  apiBase?: string;
+  readOnly?: boolean;
+}) {
   const [entries, setEntries] = useState<WeightEntry[]>([]);
   const [targetWeightKg, setTargetWeightKg] = useState<number | null>(null);
   const [period, setPeriod] = useState<PeriodDays>(30);
@@ -30,8 +36,8 @@ export default function WeightDashboard() {
     setLoading(true);
     try {
       const [entriesRes, settingsRes] = await Promise.all([
-        fetch(`/api/weight?days=${period}`),
-        fetch("/api/weight/settings"),
+        fetch(`${apiBase}/weight?days=${period}`),
+        fetch(`${apiBase}/weight/settings`),
       ]);
 
       if (entriesRes.ok) {
@@ -45,14 +51,14 @@ export default function WeightDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [period]);
+  }, [period, apiBase]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   useEffect(() => {
-    fetch("/api/events")
+    fetch(`${apiBase}/events`)
       .then((r) => r.ok ? r.json() : [])
       .then(setEvents)
       .catch(() => {});
@@ -111,21 +117,25 @@ export default function WeightDashboard() {
         </div>
 
         {/* Forms row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <WeightForm onSuccess={fetchData} />
-          <WeightTarget
-            currentTarget={targetWeightKg}
-            onSuccess={(t) => {
-              setTargetWeightKg(t);
-            }}
-          />
-        </div>
+        {!readOnly && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <WeightForm onSuccess={fetchData} />
+              <WeightTarget
+                currentTarget={targetWeightKg}
+                onSuccess={(t) => {
+                  setTargetWeightKg(t);
+                }}
+              />
+            </div>
 
-        {/* CSV Import */}
-        <WeightImport onSuccess={fetchData} />
+            {/* CSV Import */}
+            <WeightImport onSuccess={fetchData} />
 
-        {/* Email Report */}
-        <WeightReport />
+            {/* Email Report */}
+            <WeightReport />
+          </>
+        )}
       </main>
     </>
   );

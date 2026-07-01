@@ -154,7 +154,13 @@ type EditState = {
   notes: string;
 };
 
-export default function SleepPageClient() {
+export default function SleepPageClient({
+  apiBase = "/api",
+  readOnly = false,
+}: {
+  apiBase?: string;
+  readOnly?: boolean;
+}) {
   const [period, setPeriod] = useState<Period>("1m");
   const [entries, setEntries] = useState<SleepEntry[]>([]);
   const [events, setEvents] = useState<StravaEvent[]>([]);
@@ -168,8 +174,8 @@ export default function SleepPageClient() {
     setLoading(true);
     try {
       const [sleepRes, eventsRes] = await Promise.all([
-        fetch(`/api/sleep?from=${fromDate(p)}`),
-        fetch("/api/events"),
+        fetch(`${apiBase}/sleep?from=${fromDate(p)}`),
+        fetch(`${apiBase}/events`),
       ]);
       const sleepJson = await sleepRes.json();
       const eventsJson = await eventsRes.json();
@@ -178,7 +184,7 @@ export default function SleepPageClient() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiBase]);
 
   useEffect(() => {
     fetchData(period);
@@ -197,6 +203,7 @@ export default function SleepPageClient() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleBarClick = useCallback((data: any) => {
+    if (readOnly) return;
     const entry = data as SleepEntry | undefined;
     if (!entry?.calendarDate) return;
     setEditing({
@@ -206,13 +213,13 @@ export default function SleepPageClient() {
       notes: entry.notes ?? "",
     });
     setTimeout(() => panelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 50);
-  }, []);
+  }, [readOnly]);
 
   const handleSave = async () => {
     if (!editing) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/sleep", {
+      const res = await fetch(`${apiBase}/sleep`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -417,7 +424,7 @@ export default function SleepPageClient() {
       </div>
 
       {/* Edit panel */}
-      {editing && (
+      {!readOnly && editing && (
         <div
           ref={panelRef}
           className="rounded-xl border border-border overflow-hidden"

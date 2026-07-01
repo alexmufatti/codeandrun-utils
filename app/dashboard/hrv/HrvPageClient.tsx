@@ -10,13 +10,13 @@ export type { CalendarEvent };
 
 type Tab = "hrv" | "resthr" | "events";
 
-const TABS: { value: Tab; label: string }[] = [
-  { value: "hrv", label: "HRV" },
-  { value: "resthr", label: "Rest HR" },
-  { value: "events", label: "Eventi" },
-];
-
-export default function HrvPageClient() {
+export default function HrvPageClient({
+  apiBase = "/api",
+  readOnly = false,
+}: {
+  apiBase?: string;
+  readOnly?: boolean;
+}) {
   const [tab, setTab] = useState<Tab>("hrv");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -24,9 +24,9 @@ export default function HrvPageClient() {
   const [saving, setSaving] = useState(false);
 
   const fetchEvents = useCallback(async () => {
-    const res = await fetch("/api/events");
+    const res = await fetch(`${apiBase}/events`);
     if (res.ok) setEvents(await res.json());
-  }, []);
+  }, [apiBase]);
 
   useEffect(() => {
     fetchEvents();
@@ -39,7 +39,7 @@ export default function HrvPageClient() {
     }
     setSaving(true);
     try {
-      const res = await fetch("/api/events", {
+      const res = await fetch(`${apiBase}/events`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
@@ -56,9 +56,15 @@ export default function HrvPageClient() {
   };
 
   const deleteEvent = async (id: string) => {
-    await fetch(`/api/events/${id}`, { method: "DELETE" });
+    await fetch(`${apiBase}/events/${id}`, { method: "DELETE" });
     setEvents((prev) => prev.filter((e) => e._id !== id));
   };
+
+  const TABS: { value: Tab; label: string }[] = [
+    { value: "hrv", label: "HRV" },
+    { value: "resthr", label: "Rest HR" },
+    ...(!readOnly ? [{ value: "events" as Tab, label: "Eventi" }] : []),
+  ];
 
   return (
     <div>
@@ -80,8 +86,8 @@ export default function HrvPageClient() {
       </div>
 
       {/* Content */}
-      {tab === "hrv" && <HrvChart events={events} />}
-      {tab === "resthr" && <RestHrChart events={events} />}
+      {tab === "hrv" && <HrvChart events={events} apiBase={apiBase} readOnly={readOnly} />}
+      {tab === "resthr" && <RestHrChart events={events} apiBase={apiBase} readOnly={readOnly} />}
       {tab === "events" && (
         <div>
           <div className="flex items-center justify-between mb-4">

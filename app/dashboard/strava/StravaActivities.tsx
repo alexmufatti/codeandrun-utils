@@ -11,9 +11,12 @@ interface Activity {
   sport_type: string;
   distance: number;
   moving_time: number;
+  suffer_score?: number;
   wpPostId?: number;
   wpPostUrl?: string;
   legacyPublished?: boolean;
+  astroSlug?: string;
+  astroPostUrl?: string;
 }
 
 function formatDistance(meters: number): string {
@@ -36,7 +39,159 @@ function isoWeek(dateStr: string): number {
   return 1 + Math.round(((d.getTime() - w1.getTime()) / 86400000 - 3 + ((w1.getDay() + 6) % 7)) / 7);
 }
 
-export default function StravaActivities({ isWpUser }: { isWpUser: boolean }) {
+function MdxModal({
+  mdxContent: initialMdx,
+  filename,
+  postFolder,
+  onClose,
+}: {
+  mdxContent: string;
+  filename: string;
+  postFolder: string;
+  onClose: () => void;
+}) {
+  const [mdxContent, setMdxContent] = useState(initialMdx);
+  const [copied, setCopied] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedPaths, setUploadedPaths] = useState<string[]>([]);
+  const [featuredImage, setFeaturedImage] = useState<string | null>(null);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(mdxContent);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownload = () => {
+    const blob = new Blob([mdxContent], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setUploading(true);
+    const paths: string[] = [];
+    for (const file of files) {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("folder", postFolder);
+      const res = await fetch("/api/strava/activities/astro/upload-media", { method: "POST", body: form });
+      const data = await res.json();
+      if (data.path) paths.push(data.path);
+    }
+    setUploading(false);
+    if (!paths.length) return;
+    setUploadedPaths((prev) => [...prev, ...paths]);
+
+    // Inserisci le figure prima di "## Uscite"
+    const figures = paths
+      .map((p) => `<figure class="wp-block-image size-large"><img src="${p}" alt="" /></figure>`)
+      .join("\n\n");
+    setMdxContent((prev) =>
+      prev.includes("## Uscite")
+        ? prev.replace("## Uscite", `${figures}\n\n## Uscite`)
+        : prev + "\n\n" + figures
+    );
+    e.target.value = "";
+  };
+
+  const setAsFeatured = (path: string) => {
+    setFeaturedImage(path);
+    setMdxContent((prev) => {
+      // Aggiorna o aggiunge featuredImage nel frontmatter
+      if (prev.includes("featuredImage:")) {
+        return prev.replace(/featuredImage:.*/, `featuredImage: "${path}"`);
+      }
+      return prev.replace(/(categories:.+\n)/, `$1featuredImage: "${path}"\n`);
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-background rounded-lg border border-border shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div>
+            <h2 className="text-sm font-semibold">Bozza generata</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Salva in <code className="bg-muted px-1 rounded">src/content/posts/{filename}</code>
+            </p>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none ml-4">×</button>
+        </div>
+
+        {/* Upload foto */}
+        <div className="px-4 py-3 border-b border-border bg-muted/20 space-y-2">
+          <label className={`flex items-center gap-2 cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+            <span className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors">
+              {uploading ? "Caricamento..." : "📷 Aggiungi foto"}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Clicca su una foto per impostarla come featured image
+            </span>
+            <input type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
+          </label>
+          {uploadedPaths.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {uploadedPaths.map((p) => {
+                const cdn = "https://cdn.codeandrun.it";
+                const isFeatured = featuredImage === p;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setAsFeatured(p)}
+                    title={isFeatured ? "Featured image" : "Imposta come featured"}
+                    className={`relative rounded overflow-hidden border-2 transition-colors ${isFeatured ? "border-[#FC4C02]" : "border-transparent hover:border-muted-foreground"}`}
+                  >
+                    <img src={`${cdn}${p}`} alt="" className="h-16 w-16 object-cover" />
+                    {isFeatured && (
+                      <span className="absolute bottom-0 left-0 right-0 bg-[#FC4C02] text-white text-[9px] font-bold text-center py-0.5">
+                        FEATURED
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <pre className="flex-1 overflow-auto text-xs p-4 bg-muted/30 font-mono whitespace-pre">
+          {mdxContent}
+        </pre>
+        <div className="flex gap-2 px-4 py-3 border-t border-border">
+          <button
+            onClick={handleDownload}
+            className="flex-1 rounded-md bg-[#FC4C02] px-4 py-2 text-sm font-medium text-white hover:bg-[#e04400] transition-colors"
+          >
+            Download {filename}
+          </button>
+          <button
+            onClick={handleCopy}
+            className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted transition-colors"
+          >
+            {copied ? "Copiato!" : "Copia"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function StravaActivities({
+  isWpUser,
+  apiBase = "/api",
+  readOnly = false,
+}: {
+  isWpUser: boolean;
+  apiBase?: string;
+  readOnly?: boolean;
+}) {
   const { t } = useTranslations();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,24 +203,25 @@ export default function StravaActivities({ isWpUser }: { isWpUser: boolean }) {
     title: "",
   });
   const [creating, setCreating] = useState(false);
+  const [mdxModal, setMdxModal] = useState<{ mdxContent: string; filename: string; postFolder: string } | null>(null);
 
   const fetchActivities = useCallback(async (p: number) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/strava/activities?page=${p}`);
+      const res = await fetch(`${apiBase}/strava/activities?page=${p}`);
       const data = await res.json();
       setActivities(data.activities ?? []);
       setTotalPages(data.totalPages ?? 1);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [apiBase]);
 
   useEffect(() => {
     fetchActivities(page);
   }, [fetchActivities, page]);
 
-  const updateWpStatus = async (id: number, action: "clear" | "mark") => {
+  const updateBlogStatus = async (id: number, action: "clear" | "mark") => {
     await fetch(`/api/strava/activities/${id}/wp-status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -76,7 +232,7 @@ export default function StravaActivities({ isWpUser }: { isWpUser: boolean }) {
         a.id !== id
           ? a
           : action === "clear"
-          ? { ...a, wpPostId: undefined, wpPostUrl: undefined, legacyPublished: undefined }
+          ? { ...a, wpPostId: undefined, wpPostUrl: undefined, legacyPublished: undefined, astroSlug: undefined, astroPostUrl: undefined }
           : { ...a, legacyPublished: true, wpPostId: undefined, wpPostUrl: undefined }
       )
     );
@@ -103,7 +259,7 @@ export default function StravaActivities({ isWpUser }: { isWpUser: boolean }) {
     setModal((m) => ({ ...m, open: false }));
     setCreating(true);
     try {
-      const res = await fetch("/api/strava/activities/wordpress", {
+      const res = await fetch("/api/strava/activities/astro", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -113,14 +269,9 @@ export default function StravaActivities({ isWpUser }: { isWpUser: boolean }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast.success(t.strava.draftCreated, {
-        description: (
-          <a href={data.postUrl} target="_blank" rel="noopener noreferrer" className="underline">
-            {data.postUrl}
-          </a>
-        ) as any,
-        duration: 10000,
-      });
+      // postFolder = YYYY/MM dal nome file (es. 2026-06-02-... → 2026/06)
+      const postFolder = data.filename.substring(0, 7).replace("-", "/");
+      setMdxModal({ mdxContent: data.mdxContent, filename: data.filename, postFolder });
       setSelected(new Set());
       fetchActivities(page);
     } catch {
@@ -130,8 +281,25 @@ export default function StravaActivities({ isWpUser }: { isWpUser: boolean }) {
     }
   };
 
+  const isPublished = (activity: Activity) =>
+    !!(activity.wpPostId || activity.astroSlug || activity.legacyPublished);
+
+  const postUrl = (activity: Activity): string | undefined =>
+    activity.astroPostUrl
+      ? `https://www.codeandrun.it${activity.astroPostUrl}`
+      : activity.wpPostUrl;
+
   return (
     <div>
+      {mdxModal && (
+        <MdxModal
+          mdxContent={mdxModal.mdxContent}
+          filename={mdxModal.filename}
+          postFolder={mdxModal.postFolder}
+          onClose={() => setMdxModal(null)}
+        />
+      )}
+
       {/* Toolbar */}
       {isWpUser && (
         <div className="flex items-center gap-3 mb-4">
@@ -164,40 +332,47 @@ export default function StravaActivities({ isWpUser }: { isWpUser: boolean }) {
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
-                <th className="w-8 px-3 py-2"></th>
+                {!readOnly && <th className="w-8 px-3 py-2"></th>}
                 <th className="px-3 py-2 text-left font-medium text-muted-foreground">Data</th>
                 <th className="px-3 py-2 text-left font-medium text-muted-foreground">Nome</th>
                 <th className="px-3 py-2 text-left font-medium text-muted-foreground hidden sm:table-cell">Tipo</th>
                 <th className="px-3 py-2 text-right font-medium text-muted-foreground hidden sm:table-cell">Distanza</th>
                 <th className="px-3 py-2 text-right font-medium text-muted-foreground hidden md:table-cell">Durata</th>
-                {isWpUser && <th className="w-16 px-3 py-2 text-center font-medium text-muted-foreground">WP</th>}
+                <th className="px-3 py-2 text-right font-medium text-muted-foreground hidden lg:table-cell">Sforzo</th>
+                {isWpUser && <th className="w-16 px-3 py-2 text-center font-medium text-muted-foreground">Blog</th>}
               </tr>
             </thead>
             <tbody>
               {activities.map((activity, i) => {
-                const isSelected = selected.has(activity.id);
+                const published = isPublished(activity);
+                const url = postUrl(activity);
+                const isSelected = !readOnly && selected.has(activity.id);
                 const date = new Date(activity.start_date_local);
                 return (
                   <tr
                     key={activity.id}
-                    onClick={() => toggleSelect(activity.id)}
-                    className={`cursor-pointer border-t border-border transition-colors ${
-                      isSelected
-                        ? "bg-primary/5"
+                    onClick={() => !readOnly && toggleSelect(activity.id)}
+                    className={`border-t border-border transition-colors ${
+                      readOnly
+                        ? i % 2 === 0 ? "" : "bg-muted/20"
+                        : isSelected
+                        ? "cursor-pointer bg-primary/5"
                         : i % 2 === 0
-                        ? "hover:bg-muted/40"
-                        : "bg-muted/20 hover:bg-muted/40"
+                        ? "cursor-pointer hover:bg-muted/40"
+                        : "cursor-pointer bg-muted/20 hover:bg-muted/40"
                     }`}
                   >
-                    <td className="px-3 py-2">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleSelect(activity.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="rounded"
-                      />
-                    </td>
+                    {!readOnly && (
+                      <td className="px-3 py-2">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(activity.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="rounded"
+                        />
+                      </td>
+                    )}
                     <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">
                       {date.toLocaleDateString("it-IT", {
                         weekday: "short",
@@ -216,24 +391,38 @@ export default function StravaActivities({ isWpUser }: { isWpUser: boolean }) {
                     <td className="px-3 py-2 text-right text-muted-foreground hidden md:table-cell">
                       {formatDuration(activity.moving_time)}
                     </td>
+                    <td className="px-3 py-2 text-right hidden lg:table-cell">
+                      {activity.suffer_score != null ? (
+                        <span className={
+                          activity.suffer_score >= 200 ? "text-red-500 font-medium" :
+                          activity.suffer_score >= 100 ? "text-orange-500 font-medium" :
+                          activity.suffer_score >= 50  ? "text-yellow-500" :
+                          "text-muted-foreground"
+                        }>
+                          {activity.suffer_score}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/40">—</span>
+                      )}
+                    </td>
                     {isWpUser && (
                       <td className="px-3 py-2 text-center" onClick={(e) => e.stopPropagation()}>
-                        {activity.wpPostId || activity.legacyPublished ? (
+                        {published ? (
                           <div className="flex items-center justify-center gap-1">
-                            {activity.wpPostId ? (
+                            {url ? (
                               <a
-                                href={activity.wpPostUrl}
+                                href={url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                title={`Post #${activity.wpPostId}`}
+                                title={activity.astroSlug ?? `Post #${activity.wpPostId}`}
                               >
                                 📝
                               </a>
                             ) : (
-                              <span title="Pubblicato nel vecchio sistema" className="opacity-50">📝</span>
+                              <span title="Pubblicato" className="opacity-50">📝</span>
                             )}
                             <button
-                              onClick={() => updateWpStatus(activity.id, "clear")}
+                              onClick={() => updateBlogStatus(activity.id, "clear")}
                               title="Rimuovi stato pubblicazione"
                               className="text-xs text-muted-foreground/50 hover:text-destructive leading-none"
                             >
@@ -242,7 +431,7 @@ export default function StravaActivities({ isWpUser }: { isWpUser: boolean }) {
                           </div>
                         ) : (
                           <button
-                            onClick={() => updateWpStatus(activity.id, "mark")}
+                            onClick={() => updateBlogStatus(activity.id, "mark")}
                             title="Segna come pubblicato"
                             className="text-muted-foreground/30 hover:text-muted-foreground text-base leading-none"
                           >

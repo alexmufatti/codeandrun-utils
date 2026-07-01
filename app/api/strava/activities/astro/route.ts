@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import StravaActivity from "@/models/StravaActivity";
-import { createWordPressDraft } from "@/lib/strava/wordpress";
+import { generateAstroDraft } from "@/lib/strava/astro-draft";
 import { isWordPressUser } from "@/lib/wordpress-auth";
 
 export async function POST(req: NextRequest) {
@@ -12,10 +12,6 @@ export async function POST(req: NextRequest) {
   }
   if (!isWordPressUser(session.user.email)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  if (!process.env.WP_SITE_URL || !process.env.WP_USERNAME || !process.env.WP_APP_PASSWORD) {
-    return NextResponse.json({ error: "WordPress not configured" }, { status: 500 });
   }
 
   const { activityIds, title } = await req.json();
@@ -34,13 +30,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Activities not found" }, { status: 404 });
   }
 
-  const { postId, postUrl } = await createWordPressDraft(activities, title);
+  const { mdxContent, slug } = await generateAstroDraft(activities, title);
+  const astroPostUrl = `/${slug}/`;
 
-  // Marca le attività come pubblicate su WP
   await StravaActivity.updateMany(
     { userId: session.user.id, id: { $in: activityIds } },
-    { $set: { wpPostId: postId, wpPostUrl: postUrl } }
+    { $set: { astroSlug: slug, astroPostUrl } }
   );
 
-  return NextResponse.json({ postId, postUrl });
+  return NextResponse.json({ mdxContent, slug, filename: `${slug}.mdx` });
 }

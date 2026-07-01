@@ -14,6 +14,8 @@ export const translations = {
       runningStats: "Stats Running",
       hrvRestHr: "HRV / FC",
       sleep: "Sonno",
+      mealPlanner: "Menu Settimanale",
+      media: "Immagini",
     },
     home: {
       tagline:
@@ -158,7 +160,7 @@ export const translations = {
       errorTokenExchange: "Errore durante la connessione. Riprova.",
       loadingActivities: "Caricamento attività...",
       noActivities: "Nessuna attività trovata.",
-      createDraft: "Crea bozza WordPress",
+      createDraft: "Crea bozza articolo",
       creatingDraft: "Creazione in corso...",
       draftCreated: "Bozza creata!",
       draftError: "Errore nella creazione della bozza.",
@@ -220,6 +222,8 @@ export const translations = {
       runningStats: "Running Stats",
       hrvRestHr: "HRV / HR",
       sleep: "Sleep",
+      mealPlanner: "Meal Planner",
+      media: "Images",
     },
     home: {
       tagline:
@@ -364,7 +368,7 @@ export const translations = {
       errorTokenExchange: "Connection error. Please try again.",
       loadingActivities: "Loading activities...",
       noActivities: "No activities found.",
-      createDraft: "Create WordPress draft",
+      createDraft: "Create draft",
       creatingDraft: "Creating...",
       draftCreated: "Draft created!",
       draftError: "Error creating the draft.",

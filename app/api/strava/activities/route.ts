@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
       sport_type: 1,
       distance: 1,
       moving_time: 1,
+      suffer_score: 1,
       wpPostId: 1,
       wpPostUrl: 1,
       legacyPublished: 1,
