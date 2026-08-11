@@ -49,6 +49,10 @@ export async function POST(req: NextRequest) {
                 { ...activity, userId: conn.userId, athleteId: update.owner_id },
                 { upsert: true }
               );
+            } else {
+              throw new Error(
+                `Strava API fetch failed for activity ${update.object_id}: ${res.status}`
+              );
             }
           }
         }

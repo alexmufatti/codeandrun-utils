@@ -24,6 +24,7 @@ export default function DashboardNav() {
     { href: "/dashboard/sleep", label: t.nav.sleep, exact: false },
     { href: "/dashboard/meals", label: t.nav.mealPlanner, exact: false },
     ...(isWpUser ? [{ href: "/dashboard/media", label: t.nav.media, exact: false }] : []),
+    ...(isWpUser ? [{ href: "/dashboard/posts/new", label: t.nav.newPost, exact: false }] : []),
     { href: "/dashboard/weight", label: t.nav.weightTracker },
     { href: "/dashboard/pace", label: t.nav.racePlanner },
     { href: "/dashboard/vdot", label: t.nav.trainingZones },

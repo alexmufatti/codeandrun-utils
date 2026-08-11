@@ -16,6 +16,7 @@ export const translations = {
       sleep: "Sonno",
       mealPlanner: "Menu Settimanale",
       media: "Immagini",
+      newPost: "Nuovo post",
     },
     home: {
       tagline:
@@ -224,6 +225,7 @@ export const translations = {
       sleep: "Sleep",
       mealPlanner: "Meal Planner",
       media: "Images",
+      newPost: "New post",
     },
     home: {
       tagline:

@@ -15,14 +15,6 @@ function isoWeek(dateStr: string): number {
   return 1 + Math.round(((d.getTime() - w1.getTime()) / 86400000 - 3 + ((w1.getDay() + 6) % 7)) / 7);
 }
 
-function mondayOf(week: number, year: number): Date {
-  const jan4 = new Date(year, 0, 4);
-  const dayOfWeek = jan4.getDay() || 7;
-  const monday = new Date(jan4);
-  monday.setDate(jan4.getDate() - dayOfWeek + 1 + (week - 1) * 7);
-  return monday;
-}
-
 function toSlug(str: string): string {
   return str
     .toLowerCase()
@@ -51,10 +43,8 @@ export async function generateAstroDraft(
 ): Promise<{ mdxContent: string; slug: string }> {
   const sorted = [...activities].sort((a, b) => a.id - b.id);
   const weeks = [...new Set(sorted.map((a) => isoWeek(a.start_date_local)))];
-  const year = new Date(sorted[0].start_date_local).getFullYear();
-  const monday = mondayOf(weeks[0], year);
 
-  const dateStr = monday.toISOString().substring(0, 10);
+  const dateStr = sorted[sorted.length - 1].start_date_local.substring(0, 10);
   const slug = `${dateStr}-${toSlug(title)}`;
 
   const trainingTypes = JSON.stringify(sorted.map((a) => trainingEmoji(a.name)));
