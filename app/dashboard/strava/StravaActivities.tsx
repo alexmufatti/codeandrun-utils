@@ -1,8 +1,20 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { useTranslations } from "@/lib/i18n/LanguageContext";
+import { yamlStr, yamlArray } from "@/lib/posts/buildMdx";
+import type { AstroDraft } from "@/lib/strava/astro-draft";
+
+const TRAINING_TYPE_OPTIONS = ["🟢", "🟡", "🔴", "🏁"];
+const TRAINING_FEELING_OPTIONS = ["😀", "🙂", "😐", "🫤", "🙁", "😭", "☠️"];
+
+function csvToArray(s: string): string[] {
+  return s
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
 
 interface Activity {
   id: number;
@@ -39,27 +51,171 @@ function isoWeek(dateStr: string): number {
   return 1 + Math.round(((d.getTime() - w1.getTime()) / 86400000 - 3 + ((w1.getDay() + 6) % 7)) / 7);
 }
 
+function EmojiPicker({
+  value,
+  options,
+  onChange,
+  title,
+}: {
+  value: string;
+  options: string[];
+  onChange: (v: string) => void;
+  title: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [custom, setCustom] = useState("");
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        title={title}
+        className="w-12 rounded-md border border-border bg-background px-2 py-1 text-sm text-center hover:bg-muted transition-colors"
+      >
+        {value || "—"}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute z-50 right-0 top-full mt-1 w-40 rounded-md border border-border bg-background shadow-lg p-2 space-y-2">
+            <div className="flex flex-wrap gap-1">
+              {options.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt);
+                    setOpen(false);
+                  }}
+                  className={`rounded-md border px-2 py-1 text-sm hover:bg-muted transition-colors ${
+                    opt === value ? "border-[#FC4C02]" : "border-border"
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+            <input
+              type="text"
+              placeholder="altro..."
+              value={custom}
+              onChange={(e) => setCustom(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && custom.trim()) {
+                  onChange(custom.trim());
+                  setCustom("");
+                  setOpen(false);
+                }
+              }}
+              className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function buildDraftMdx(fm: AstroDraft["frontmatter"], activities: AstroDraft["activities"], body: string): string {
+  const lines = ["---"];
+  lines.push(`title: ${yamlStr(fm.title)}`);
+  lines.push(`date: ${fm.date}`);
+  lines.push(`excerpt: ${yamlStr(fm.excerpt)}`);
+  if (fm.seoDescription) lines.push(`seoDescription: ${yamlStr(fm.seoDescription)}`);
+  lines.push(`categories: ${yamlArray(fm.categories)}`);
+  if (fm.tags.length) lines.push(`tags: ${yamlArray(fm.tags)}`);
+  if (fm.featuredImage) lines.push(`featuredImage: ${yamlStr(fm.featuredImage)}`);
+  lines.push(`car_week: ${yamlStr(fm.car_week)}`);
+  lines.push(`car_km: ${yamlStr(fm.car_km)}`);
+  lines.push(`training_types: ${yamlArray(activities.map((a) => a.trainingType))}`);
+  lines.push(`training_feelings: ${yamlArray(activities.map((a) => a.trainingFeeling))}`);
+  lines.push("---");
+  return `${lines.join("\n")}\n\n${body.trim()}\n`;
+}
+
 function MdxModal({
-  mdxContent: initialMdx,
+  draft,
   filename,
   postFolder,
   onClose,
+  onPublished,
 }: {
-  mdxContent: string;
+  draft: AstroDraft;
   filename: string;
   postFolder: string;
   onClose: () => void;
+  onPublished: () => void;
 }) {
-  const [mdxContent, setMdxContent] = useState(initialMdx);
+  const [title, setTitle] = useState(draft.frontmatter.title);
+  const [date, setDate] = useState(draft.frontmatter.date);
+  const [excerpt, setExcerpt] = useState(draft.frontmatter.excerpt);
+  const [seoDescription, setSeoDescription] = useState(draft.frontmatter.seoDescription);
+  const [categoriesText, setCategoriesText] = useState(draft.frontmatter.categories.join(", "));
+  const [tagsText, setTagsText] = useState(draft.frontmatter.tags.join(", "));
+  const [featuredImage, setFeaturedImage] = useState(draft.frontmatter.featuredImage);
+  const [carWeek, setCarWeek] = useState(draft.frontmatter.car_week);
+  const [carKm, setCarKm] = useState(draft.frontmatter.car_km);
+  const [activities, setActivities] = useState(draft.activities);
+  const [body, setBody] = useState(draft.body);
+
   const [copied, setCopied] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadedPaths, setUploadedPaths] = useState<string[]>([]);
-  const [featuredImage, setFeaturedImage] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [published, setPublished] = useState<{ url: string } | null>(null);
+
+  const mdxContent = useMemo(
+    () =>
+      buildDraftMdx(
+        {
+          title,
+          date,
+          excerpt,
+          seoDescription,
+          categories: csvToArray(categoriesText),
+          tags: csvToArray(tagsText),
+          featuredImage,
+          car_week: carWeek,
+          car_km: carKm,
+        },
+        activities,
+        body
+      ),
+    [title, date, excerpt, seoDescription, categoriesText, tagsText, featuredImage, carWeek, carKm, activities, body]
+  );
+
+  const setActivityField = (id: number, field: "trainingType" | "trainingFeeling", value: string) => {
+    setActivities((prev) => prev.map((a) => (a.id === id ? { ...a, [field]: value } : a)));
+  };
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(mdxContent);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handlePublish = async () => {
+    setPublishing(true);
+    try {
+      const res = await fetch("/api/posts/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename, content: mdxContent }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        toast.error(data.error === "already_exists" ? "Esiste già un post con questo slug/data" : "Pubblicazione fallita");
+        return;
+      }
+      setPublished({ url: data.url });
+      toast.success("Post pubblicato!");
+      onPublished();
+    } catch {
+      toast.error("Pubblicazione fallita, riprova");
+    } finally {
+      setPublishing(false);
+    }
   };
 
   const handleDownload = () => {
@@ -93,23 +249,12 @@ function MdxModal({
     const figures = paths
       .map((p) => `<figure class="wp-block-image size-large"><img src="${p}" alt="" /></figure>`)
       .join("\n\n");
-    setMdxContent((prev) =>
+    setBody((prev) =>
       prev.includes("## Uscite")
         ? prev.replace("## Uscite", `${figures}\n\n## Uscite`)
         : prev + "\n\n" + figures
     );
     e.target.value = "";
-  };
-
-  const setAsFeatured = (path: string) => {
-    setFeaturedImage(path);
-    setMdxContent((prev) => {
-      // Aggiorna o aggiunge featuredImage nel frontmatter
-      if (prev.includes("featuredImage:")) {
-        return prev.replace(/featuredImage:.*/, `featuredImage: "${path}"`);
-      }
-      return prev.replace(/(categories:.+\n)/, `$1featuredImage: "${path}"\n`);
-    });
   };
 
   return (
@@ -125,51 +270,184 @@ function MdxModal({
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg leading-none ml-4">×</button>
         </div>
 
-        {/* Upload foto */}
-        <div className="px-4 py-3 border-b border-border bg-muted/20 space-y-2">
-          <label className={`flex items-center gap-2 cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
-            <span className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors">
-              {uploading ? "Caricamento..." : "📷 Aggiungi foto"}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              Clicca su una foto per impostarla come featured image
-            </span>
-            <input type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
-          </label>
-          {uploadedPaths.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {uploadedPaths.map((p) => {
-                const cdn = "https://cdn.codeandrun.it";
-                const isFeatured = featuredImage === p;
-                return (
-                  <button
-                    key={p}
-                    onClick={() => setAsFeatured(p)}
-                    title={isFeatured ? "Featured image" : "Imposta come featured"}
-                    className={`relative rounded overflow-hidden border-2 transition-colors ${isFeatured ? "border-[#FC4C02]" : "border-transparent hover:border-muted-foreground"}`}
-                  >
-                    <img src={`${cdn}${p}`} alt="" className="h-16 w-16 object-cover" />
-                    {isFeatured && (
-                      <span className="absolute bottom-0 left-0 right-0 bg-[#FC4C02] text-white text-[9px] font-bold text-center py-0.5">
-                        FEATURED
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+        <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
+          {/* Upload foto */}
+          <div className="space-y-2">
+            <label className={`flex items-center gap-2 cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+              <span className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors">
+                {uploading ? "Caricamento..." : "📷 Aggiungi foto"}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Clicca su una foto per impostarla come featured image
+              </span>
+              <input type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
+            </label>
+            {uploadedPaths.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {uploadedPaths.map((p) => {
+                  const cdn = "https://cdn.codeandrun.it";
+                  const isFeatured = featuredImage === p;
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setFeaturedImage(p)}
+                      title={isFeatured ? "Featured image" : "Imposta come featured"}
+                      className={`relative rounded overflow-hidden border-2 transition-colors ${isFeatured ? "border-[#FC4C02]" : "border-transparent hover:border-muted-foreground"}`}
+                    >
+                      <img src={`${cdn}${p}`} alt="" className="h-16 w-16 object-cover" />
+                      {isFeatured && (
+                        <span className="absolute bottom-0 left-0 right-0 bg-[#FC4C02] text-white text-[9px] font-bold text-center py-0.5">
+                          FEATURED
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Frontmatter */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Titolo</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Data</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Settimana (car_week)</label>
+              <input
+                type="text"
+                value={carWeek}
+                onChange={(e) => setCarWeek(e.target.value)}
+                className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Km (car_km)</label>
+              <input
+                type="text"
+                value={carKm}
+                onChange={(e) => setCarKm(e.target.value)}
+                className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Estratto</label>
+            <textarea
+              value={excerpt}
+              onChange={(e) => setExcerpt(e.target.value)}
+              rows={2}
+              className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">SEO description</label>
+            <textarea
+              value={seoDescription}
+              onChange={(e) => setSeoDescription(e.target.value)}
+              rows={2}
+              className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Categorie</label>
+              <input
+                type="text"
+                placeholder="Running, Sport"
+                value={categoriesText}
+                onChange={(e) => setCategoriesText(e.target.value)}
+                className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Tag</label>
+              <input
+                type="text"
+                placeholder="weekly, lungo, caldo"
+                value={tagsText}
+                onChange={(e) => setTagsText(e.target.value)}
+                className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          </div>
+
+          {/* Emoji per attività */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Attività</label>
+            <div className="space-y-1.5">
+              {activities.map((a) => (
+                <div key={a.id} className="flex items-center gap-2 text-sm">
+                  <span className="flex-1 truncate">{a.name}</span>
+                  <EmojiPicker
+                    value={a.trainingType}
+                    options={TRAINING_TYPE_OPTIONS}
+                    onChange={(v) => setActivityField(a.id, "trainingType", v)}
+                    title="Intensità"
+                  />
+                  <EmojiPicker
+                    value={a.trainingFeeling}
+                    options={TRAINING_FEELING_OPTIONS}
+                    onChange={(v) => setActivityField(a.id, "trainingFeeling", v)}
+                    title="Sensazione"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Corpo del post (MDX)</label>
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              rows={10}
+              className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          {published && (
+            <div className="rounded-md border border-border bg-muted/30 p-3 text-sm space-y-1">
+              <p className="font-medium">Pubblicato ✓</p>
+              <a href={published.url} target="_blank" rel="noopener noreferrer" className="text-[#FC4C02] hover:underline break-all">
+                {published.url}
+              </a>
             </div>
           )}
         </div>
 
-        <pre className="flex-1 overflow-auto text-xs p-4 bg-muted/30 font-mono whitespace-pre">
-          {mdxContent}
-        </pre>
         <div className="flex gap-2 px-4 py-3 border-t border-border">
           <button
-            onClick={handleDownload}
-            className="flex-1 rounded-md bg-[#FC4C02] px-4 py-2 text-sm font-medium text-white hover:bg-[#e04400] transition-colors"
+            onClick={handlePublish}
+            disabled={publishing || !!published}
+            className="flex-1 rounded-md bg-[#FC4C02] px-4 py-2 text-sm font-medium text-white hover:bg-[#e04400] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Download {filename}
+            {publishing ? "Pubblicazione..." : published ? "Pubblicato" : "Pubblica"}
+          </button>
+          <button
+            onClick={handleDownload}
+            className="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted transition-colors"
+          >
+            Download
           </button>
           <button
             onClick={handleCopy}
@@ -203,7 +481,7 @@ export default function StravaActivities({
     title: "",
   });
   const [creating, setCreating] = useState(false);
-  const [mdxModal, setMdxModal] = useState<{ mdxContent: string; filename: string; postFolder: string } | null>(null);
+  const [mdxModal, setMdxModal] = useState<{ draft: AstroDraft; filename: string; postFolder: string } | null>(null);
 
   const fetchActivities = useCallback(async (p: number) => {
     setLoading(true);
@@ -267,11 +545,11 @@ export default function StravaActivities({
           title: modal.title,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      const draft: AstroDraft = await res.json();
+      if (!res.ok) throw new Error((draft as unknown as { error?: string }).error);
       // postFolder = YYYY/MM dal nome file (es. 2026-06-02-... → 2026/06)
-      const postFolder = data.filename.substring(0, 7).replace("-", "/");
-      setMdxModal({ mdxContent: data.mdxContent, filename: data.filename, postFolder });
+      const postFolder = draft.filename.substring(0, 7).replace("-", "/");
+      setMdxModal({ draft, filename: draft.filename, postFolder });
       setSelected(new Set());
       fetchActivities(page);
     } catch {
@@ -293,10 +571,11 @@ export default function StravaActivities({
     <div>
       {mdxModal && (
         <MdxModal
-          mdxContent={mdxModal.mdxContent}
+          draft={mdxModal.draft}
           filename={mdxModal.filename}
           postFolder={mdxModal.postFolder}
           onClose={() => setMdxModal(null)}
+          onPublished={() => fetchActivities(page)}
         />
       )}
 

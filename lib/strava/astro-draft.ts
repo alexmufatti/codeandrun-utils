@@ -37,18 +37,41 @@ async function downloadMapBuffer(polyline: string): Promise<Buffer | null> {
   return Buffer.from(buf);
 }
 
+export interface AstroDraftActivity {
+  id: number;
+  name: string;
+  trainingType: string;
+  trainingFeeling: string;
+}
+
+export interface AstroDraft {
+  slug: string;
+  filename: string;
+  frontmatter: {
+    title: string;
+    date: string;
+    excerpt: string;
+    seoDescription: string;
+    categories: string[];
+    tags: string[];
+    featuredImage: string;
+    car_week: string;
+    car_km: string;
+  };
+  activities: AstroDraftActivity[];
+  body: string;
+}
+
 export async function generateAstroDraft(
   activities: any[],
   title: string
-): Promise<{ mdxContent: string; slug: string }> {
+): Promise<AstroDraft> {
   const sorted = [...activities].sort((a, b) => a.id - b.id);
   const weeks = [...new Set(sorted.map((a) => isoWeek(a.start_date_local)))];
 
   const dateStr = sorted[sorted.length - 1].start_date_local.substring(0, 10);
   const slug = `${dateStr}-${toSlug(title)}`;
 
-  const trainingTypes = JSON.stringify(sorted.map((a) => trainingEmoji(a.name)));
-  const trainingFeelings = JSON.stringify(sorted.map(() => "😐"));
   const totalKm = Math.round(sorted.reduce((sum, a) => sum + (a.distance ?? 0), 0) / 1000);
 
   // Download e upload mappe su S3
@@ -79,18 +102,7 @@ export async function generateAstroDraft(
     })
     .join("\n\n");
 
-  const mdxContent = `---
-title: "${title}"
-date: ${dateStr}
-excerpt: ""
-categories: ["Running", "Sport"]
-car_week: "W${weeks[0]}"
-car_km: "${totalKm}"
-training_types: ${trainingTypes}
-training_feelings: ${trainingFeelings}
----
-
-import StravaAccordion from '../../components/shortcodes/StravaAccordion.astro';
+  const body = `import StravaAccordion from '../../components/shortcodes/StravaAccordion.astro';
 
 <p></p>
 
@@ -99,5 +111,26 @@ import StravaAccordion from '../../components/shortcodes/StravaAccordion.astro';
 ${accordions}
 `;
 
-  return { mdxContent, slug };
+  return {
+    slug,
+    filename: `${slug}.mdx`,
+    frontmatter: {
+      title,
+      date: dateStr,
+      excerpt: "",
+      seoDescription: "",
+      categories: ["Running", "Sport"],
+      tags: [],
+      featuredImage: "",
+      car_week: `W${weeks[0]}`,
+      car_km: String(totalKm),
+    },
+    activities: sorted.map((a) => ({
+      id: a.id,
+      name: a.name,
+      trainingType: trainingEmoji(a.name),
+      trainingFeeling: "😐",
+    })),
+    body,
+  };
 }

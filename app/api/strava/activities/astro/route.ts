@@ -30,13 +30,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Activities not found" }, { status: 404 });
   }
 
-  const { mdxContent, slug } = await generateAstroDraft(activities, title);
-  const astroPostUrl = `/${slug}/`;
+  const draft = await generateAstroDraft(activities, title);
+  const astroPostUrl = `/${draft.slug}/`;
 
   await StravaActivity.updateMany(
     { userId: session.user.id, id: { $in: activityIds } },
-    { $set: { astroSlug: slug, astroPostUrl } }
+    { $set: { astroSlug: draft.slug, astroPostUrl } }
   );
 
-  return NextResponse.json({ mdxContent, slug, filename: `${slug}.mdx` });
+  return NextResponse.json(draft);
 }

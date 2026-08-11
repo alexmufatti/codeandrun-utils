@@ -11,11 +11,11 @@ export interface PostFields {
   body: string;
 }
 
-function yamlStr(val: string): string {
+export function yamlStr(val: string): string {
   return `"${val.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
-function yamlArray(arr: string[]): string {
+export function yamlArray(arr: string[]): string {
   return `[${arr.map(yamlStr).join(", ")}]`;
 }
 

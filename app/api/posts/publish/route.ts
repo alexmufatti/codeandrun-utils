@@ -13,30 +13,46 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { title, date, slug: slugOverride, body: mdxBody } = body as Partial<PostFields> & { slug?: string };
-
-  if (!title || !date || !mdxBody) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-  }
-
-  const slug = slugify(slugOverride || title);
-  if (!slug) {
-    return NextResponse.json({ error: "Could not derive a slug from the title" }, { status: 400 });
-  }
-
-  const filename = buildFilename(date, slug);
-  const content = buildMdx({
+  const {
     title,
     date,
-    excerpt: body.excerpt,
-    seoDescription: body.seoDescription,
-    categories: body.categories,
-    tags: body.tags,
-    featuredImage: body.featuredImage,
-    featuredImageAlt: body.featuredImageAlt,
-    places: body.places,
+    slug: slugOverride,
     body: mdxBody,
-  });
+    filename: rawFilename,
+    content: rawContent,
+  } = body as Partial<PostFields> & { slug?: string; filename?: string; content?: string };
+
+  let filename: string;
+  let content: string;
+
+  if (rawFilename && rawContent) {
+    // MDX già pronto (es. bozza generata dalle attività Strava): pubblica così com'è.
+    filename = rawFilename;
+    content = rawContent;
+  } else {
+    if (!title || !date || !mdxBody) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    const slug = slugify(slugOverride || title);
+    if (!slug) {
+      return NextResponse.json({ error: "Could not derive a slug from the title" }, { status: 400 });
+    }
+
+    filename = buildFilename(date, slug);
+    content = buildMdx({
+      title,
+      date,
+      excerpt: body.excerpt,
+      seoDescription: body.seoDescription,
+      categories: body.categories,
+      tags: body.tags,
+      featuredImage: body.featuredImage,
+      featuredImageAlt: body.featuredImageAlt,
+      places: body.places,
+      body: mdxBody,
+    });
+  }
 
   const deployUrl = process.env.DEPLOY_SERVICE_URL;
   const deploySecret = process.env.DEPLOY_SERVICE_SECRET;
@@ -55,7 +71,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         filename,
         content,
-        commitMessage: `Add post: ${slug}`,
+        commitMessage: `Add post: ${filename}`,
       }),
     });
   } catch (err) {
