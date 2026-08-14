@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import PhotoPicker from "@/components/media/PhotoPicker";
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -33,8 +34,6 @@ export default function NewPostForm() {
   const [tags, setTags] = useState("");
   const [body, setBody] = useState("");
   const [featuredImage, setFeaturedImage] = useState<string | null>(null);
-  const [uploadedPaths, setUploadedPaths] = useState<string[]>([]);
-  const [uploading, setUploading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [result, setResult] = useState<{ url: string; commitSha: string } | null>(null);
 
@@ -45,31 +44,13 @@ export default function NewPostForm() {
     if (!slugTouched) setSlug(slugify(v));
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    if (!files.length) return;
-    setUploading(true);
-    const folder = date.slice(0, 7).replace("-", "/");
-    const paths: string[] = [];
-    try {
-      for (const file of files) {
-        const form = new FormData();
-        form.append("file", file);
-        form.append("folder", folder);
-        const res = await fetch("/api/strava/activities/astro/upload-media", { method: "POST", body: form });
-        const data = await res.json();
-        if (data.path) paths.push(data.path);
-      }
-    } finally {
-      setUploading(false);
-    }
-    if (!paths.length) return;
-    setUploadedPaths((prev) => [...prev, ...paths]);
+  const uploadFolder = date.slice(0, 7).replace("-", "/");
+
+  const handleInsertPaths = (paths: string[]) => {
     const figures = paths
       .map((p) => `<figure class="wp-block-image size-large"><img src="${p}" alt="" /></figure>`)
       .join("\n\n");
     setBody((prev) => (prev ? `${prev}\n\n${figures}` : figures));
-    e.target.value = "";
   };
 
   const handlePublish = async () => {
@@ -195,38 +176,12 @@ export default function NewPostForm() {
         </div>
       </div>
 
-      <div className="space-y-2">
-        <label className={`flex items-center gap-2 cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
-          <span className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors">
-            {uploading ? "Caricamento..." : "📷 Aggiungi foto"}
-          </span>
-          <span className="text-xs text-muted-foreground">Clicca su una foto per impostarla come featured image</span>
-          <input type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
-        </label>
-        {uploadedPaths.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {uploadedPaths.map((p) => {
-              const cdn = "https://cdn.codeandrun.it";
-              const isFeatured = featuredImage === p;
-              return (
-                <button
-                  key={p}
-                  onClick={() => setFeaturedImage(p)}
-                  title={isFeatured ? "Featured image" : "Imposta come featured"}
-                  className={`relative rounded overflow-hidden border-2 transition-colors ${isFeatured ? "border-[#FC4C02]" : "border-transparent hover:border-muted-foreground"}`}
-                >
-                  <img src={`${cdn}${p}`} alt="" className="h-16 w-16 object-cover" />
-                  {isFeatured && (
-                    <span className="absolute bottom-0 left-0 right-0 bg-[#FC4C02] text-white text-[9px] font-bold text-center py-0.5">
-                      FEATURED
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      <PhotoPicker
+        folder={uploadFolder}
+        featuredImage={featuredImage ?? ""}
+        onFeaturedChange={setFeaturedImage}
+        onInsert={handleInsertPaths}
+      />
 
       <div className="space-y-1">
         <label className="text-sm font-medium">Corpo del post (MDX)</label>

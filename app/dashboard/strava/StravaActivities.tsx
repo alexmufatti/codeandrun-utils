@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useTranslations } from "@/lib/i18n/LanguageContext";
 import { yamlStr, yamlArray } from "@/lib/posts/buildMdx";
 import type { AstroDraft } from "@/lib/strava/astro-draft";
+import PhotoPicker from "@/components/media/PhotoPicker";
 
 const TRAINING_TYPE_OPTIONS = ["🟢", "🟡", "🔴", "🏁"];
 const TRAINING_FEELING_OPTIONS = ["😀", "🙂", "😐", "🫤", "🙁", "😭", "☠️"];
@@ -160,8 +161,6 @@ function MdxModal({
   const [body, setBody] = useState(draft.body);
 
   const [copied, setCopied] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadedPaths, setUploadedPaths] = useState<string[]>([]);
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState<{ url: string } | null>(null);
 
@@ -228,23 +227,7 @@ function MdxModal({
     URL.revokeObjectURL(url);
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    if (!files.length) return;
-    setUploading(true);
-    const paths: string[] = [];
-    for (const file of files) {
-      const form = new FormData();
-      form.append("file", file);
-      form.append("folder", postFolder);
-      const res = await fetch("/api/strava/activities/astro/upload-media", { method: "POST", body: form });
-      const data = await res.json();
-      if (data.path) paths.push(data.path);
-    }
-    setUploading(false);
-    if (!paths.length) return;
-    setUploadedPaths((prev) => [...prev, ...paths]);
-
+  const handleInsertPaths = (paths: string[]) => {
     // Inserisci le figure prima di "## Uscite"
     const figures = paths
       .map((p) => `<figure class="wp-block-image size-large"><img src="${p}" alt="" /></figure>`)
@@ -254,7 +237,6 @@ function MdxModal({
         ? prev.replace("## Uscite", `${figures}\n\n## Uscite`)
         : prev + "\n\n" + figures
     );
-    e.target.value = "";
   };
 
   return (
@@ -272,40 +254,12 @@ function MdxModal({
 
         <div className="flex-1 overflow-auto px-4 py-3 space-y-4">
           {/* Upload foto */}
-          <div className="space-y-2">
-            <label className={`flex items-center gap-2 cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
-              <span className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted transition-colors">
-                {uploading ? "Caricamento..." : "📷 Aggiungi foto"}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                Clicca su una foto per impostarla come featured image
-              </span>
-              <input type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
-            </label>
-            {uploadedPaths.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {uploadedPaths.map((p) => {
-                  const cdn = "https://cdn.codeandrun.it";
-                  const isFeatured = featuredImage === p;
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => setFeaturedImage(p)}
-                      title={isFeatured ? "Featured image" : "Imposta come featured"}
-                      className={`relative rounded overflow-hidden border-2 transition-colors ${isFeatured ? "border-[#FC4C02]" : "border-transparent hover:border-muted-foreground"}`}
-                    >
-                      <img src={`${cdn}${p}`} alt="" className="h-16 w-16 object-cover" />
-                      {isFeatured && (
-                        <span className="absolute bottom-0 left-0 right-0 bg-[#FC4C02] text-white text-[9px] font-bold text-center py-0.5">
-                          FEATURED
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <PhotoPicker
+            folder={postFolder}
+            featuredImage={featuredImage}
+            onFeaturedChange={setFeaturedImage}
+            onInsert={handleInsertPaths}
+          />
 
           {/* Frontmatter */}
           <div className="space-y-1">

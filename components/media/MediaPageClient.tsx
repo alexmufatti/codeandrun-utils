@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Copy, Check, Upload, Search } from "lucide-react";
+import { Copy, Check, Upload, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface S3Image {
@@ -43,6 +43,7 @@ export default function MediaPageClient() {
   const [uploading, setUploading] = useState(false);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [deletingKey, setDeletingKey] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchImages = useCallback(async () => {
@@ -98,6 +99,21 @@ export default function MediaPageClient() {
     } finally {
       setUploading(false);
       e.target.value = "";
+    }
+  };
+
+  const handleDelete = async (key: string) => {
+    if (!window.confirm("Eliminare questa immagine? L'operazione non è reversibile.")) return;
+    setDeletingKey(key);
+    try {
+      const res = await fetch(`/api/media?key=${encodeURIComponent(key)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      setImages((prev) => prev.filter((img) => img.key !== key));
+      toast.success("Immagine eliminata");
+    } catch {
+      toast.error("Errore nell'eliminazione");
+    } finally {
+      setDeletingKey(null);
     }
   };
 
@@ -161,7 +177,17 @@ export default function MediaPageClient() {
                     {img.key.split("/").pop()}
                   </p>
                   <p className="text-[11px] text-muted-foreground/70">{formatSize(img.size)}</p>
-                  <CopyButton url={img.url} />
+                  <div className="flex items-center justify-between">
+                    <CopyButton url={img.url} />
+                    <button
+                      onClick={() => handleDelete(img.key)}
+                      disabled={deletingKey === img.key}
+                      title="Elimina"
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

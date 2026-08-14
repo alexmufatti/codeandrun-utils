@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import sharp from "sharp";
 
 let _client: S3Client | null = null;
@@ -75,6 +75,13 @@ export async function resizeAndUploadImage(
   const key = `uploads/${folder}/${slug}.${finalExt}`;
   const url = await uploadToS3(key, buf, contentType);
   return { key, url };
+}
+
+export async function deleteFromS3(key: string): Promise<void> {
+  const bucket = process.env.S3_BUCKET;
+  if (!bucket) throw new Error("S3_BUCKET not configured");
+
+  await getClient().send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
 }
 
 export interface S3Image {

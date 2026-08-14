@@ -20,11 +20,12 @@ type RestHrEntry = {
   movingAvg?: number;
 };
 
-type Period = "3m" | "6m" | "1y" | "all";
+type Period = "1m" | "3m" | "6m" | "1y" | "all";
 
 function fromDate(period: Period): string {
   const d = new Date();
-  if (period === "3m") d.setMonth(d.getMonth() - 3);
+  if (period === "1m") d.setMonth(d.getMonth() - 1);
+  else if (period === "3m") d.setMonth(d.getMonth() - 3);
   else if (period === "6m") d.setMonth(d.getMonth() - 6);
   else if (period === "1y") d.setFullYear(d.getFullYear() - 1);
   else return "2000-01-01";
@@ -34,6 +35,12 @@ function fromDate(period: Period): string {
 function formatDate(s: string): string {
   const [, m, d] = s.split("-");
   return `${d}/${m}`;
+}
+
+function weeklyTicks(dates: string[], maxTicks = 14): string[] {
+  const mondays = dates.filter((s) => new Date(s + "T00:00:00").getDay() === 1);
+  const step = Math.max(1, Math.ceil(mondays.length / maxTicks));
+  return mondays.filter((_, i) => i % step === 0);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -62,6 +69,7 @@ export default function RestHrChart({
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   const fetchData = useCallback(async (p: Period) => {
     setLoading(true);
@@ -129,11 +137,14 @@ export default function RestHrChart({
   };
 
   const PERIODS: { label: string; value: Period }[] = [
+    { label: "1M", value: "1m" },
     { label: "3M", value: "3m" },
     { label: "6M", value: "6m" },
     { label: "1A", value: "1y" },
     { label: "Tutto", value: "all" },
   ];
+
+  const xTicks = weeklyTicks(data.map((d) => d.calendarDate));
 
   return (
     <div className="flex flex-col gap-4">
@@ -172,7 +183,7 @@ export default function RestHrChart({
               tickFormatter={formatDate}
               tick={{ fontSize: 11 }}
               tickLine={false}
-              interval="preserveStartEnd"
+              ticks={xTicks}
             />
             <YAxis
               domain={[yMin, yMax]}
@@ -217,33 +228,43 @@ export default function RestHrChart({
 
       {/* Import */}
       {!readOnly && (
-        <div className="flex flex-col gap-2 mt-2">
-          <p className="text-xs text-muted-foreground">
-            Incolla JSON da{" "}
-            <a
-              href="https://connect.garmin.com/modern/report/60/wellness/last_seven_days"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline"
-            >
-              Garmin Connect
-            </a>{" "}
-            (formato array con <code>calendarDate</code> e <code>values.restingHR</code>)
-          </p>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            rows={4}
-            placeholder='[{ "calendarDate": "2024-01-01", "values": { "restingHR": 42 } }]'
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-y"
-          />
+        <div className="mt-2">
           <button
-            onClick={saveData}
-            disabled={saving || !input.trim()}
-            className="self-end rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+            onClick={() => setShowImport((v) => !v)}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            {saving ? "Salvataggio..." : "Salva dati"}
+            {showImport ? "− Nascondi importazione manuale" : "+ Importa dati manualmente"}
           </button>
+          {showImport && (
+            <div className="flex flex-col gap-2 mt-2">
+              <p className="text-xs text-muted-foreground">
+                Incolla JSON da{" "}
+                <a
+                  href="https://connect.garmin.com/modern/report/60/wellness/last_seven_days"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  Garmin Connect
+                </a>{" "}
+                (formato array con <code>calendarDate</code> e <code>values.restingHR</code>)
+              </p>
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                rows={4}
+                placeholder='[{ "calendarDate": "2024-01-01", "values": { "restingHR": 42 } }]'
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+              />
+              <button
+                onClick={saveData}
+                disabled={saving || !input.trim()}
+                className="self-end rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+              >
+                {saving ? "Salvataggio..." : "Salva dati"}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
