@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -177,6 +179,30 @@ function buildMarkdownTable(yearTotals: YearTotal[], lastUpdate: string | null):
       : "",
   ];
   return lines.join("\n");
+}
+
+function buildMonthlyKmData(monthlyData: MonthStat[]) {
+  const years = [...new Set(monthlyData.map((d) => d._id.year))].sort();
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
+
+  const rows = MONTHS.map((monthName, i) => {
+    const monthNum = i + 1;
+    const row: Record<string, string | number | null> = { month: monthName };
+    for (const year of years) {
+      if (year === currentYear && monthNum >= currentMonth) {
+        row[String(year)] = null;
+      } else {
+        const total = monthlyData
+          .filter((d) => d._id.year === year && d._id.month === monthNum)
+          .reduce((acc, d) => acc + d.total_distance / 1000, 0);
+        row[String(year)] = Math.round(total * 10) / 10;
+      }
+    }
+    return row;
+  });
+
+  return { years, rows };
 }
 
 function buildChartCsvData(monthlyData: MonthStat[]): string {
@@ -409,6 +435,7 @@ export default function StatsClient({
 
   const yearTotals = computeYearTotals(monthlyData, kudosData);
   const { years, rows: chartRows } = buildChartData(monthlyData, metric);
+  const { rows: monthlyKmRows } = buildMonthlyKmData(monthlyData);
   const chartCsv = buildChartCsvData(monthlyData);
   const favoriteDay = dayOfWeek.length
     ? dayOfWeek.reduce((max, d) => (d.count > max.count ? d : max), dayOfWeek[0])
@@ -570,6 +597,70 @@ export default function StatsClient({
               );
             })()}
           </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Km per mese (non cumulativo) */}
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
+          <h2 className="text-base font-semibold">Km per mese</h2>
+        </div>
+        {/* Selettore anni (condiviso con il grafico cumulativo) */}
+        <div className="flex gap-2 flex-wrap mb-4">
+          {years.map((year, i) => {
+            const color = YEAR_COLORS[i % YEAR_COLORS.length];
+            const isSelected = selectedYears.has(year);
+            return (
+              <button
+                key={year}
+                onClick={() => toggleYear(year)}
+                className="px-3 py-1 rounded-full text-xs font-semibold border transition-all"
+                style={
+                  isSelected
+                    ? { backgroundColor: color, borderColor: color, color: "#fff" }
+                    : { borderColor: color, color: color, backgroundColor: "transparent" }
+                }
+              >
+                {year}
+              </button>
+            );
+          })}
+        </div>
+        <ResponsiveContainer width="100%" height={340}>
+          <BarChart data={monthlyKmRows} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis
+              dataKey="month"
+              tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+              tickLine={false}
+              axisLine={{ stroke: "var(--border)" }}
+            />
+            <YAxis
+              tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
+              tickLine={false}
+              axisLine={false}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "var(--card)",
+                border: "1px solid var(--border)",
+                borderRadius: "8px",
+                fontSize: "13px",
+                color: "var(--foreground)",
+              }}
+              cursor={{ fill: "var(--muted)" }}
+            />
+            <Legend wrapperStyle={{ color: "var(--muted-foreground)", fontSize: "13px" }} />
+            {years.map((year, i) =>
+              visibleYears.includes(year) ? (
+                <Bar
+                  key={year}
+                  dataKey={String(year)}
+                  fill={YEAR_COLORS[i % YEAR_COLORS.length]}
+                />
+              ) : null
+            )}
+          </BarChart>
         </ResponsiveContainer>
       </div>
 

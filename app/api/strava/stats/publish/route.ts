@@ -9,6 +9,7 @@ import {
   getPersonalRecords,
   computeYearTotals,
   buildChartData,
+  buildMonthlyChartData,
 } from "@/lib/strava/stats";
 
 export async function POST() {
@@ -30,6 +31,7 @@ export async function POST() {
 
   const yearTotals = computeYearTotals(monthlyData, kudosData);
   const { header: chartHeader, rows: chartRows, years: chartYears } = buildChartData(monthlyData);
+  const { header: monthlyChartHeader, rows: monthlyChartRows } = buildMonthlyChartData(monthlyData);
 
   const statsJson = JSON.stringify({
     updatedAt: new Date().toISOString(),
@@ -37,6 +39,8 @@ export async function POST() {
     chartHeader,
     chartRows,
     chartYears,
+    monthlyChartHeader,
+    monthlyChartRows,
     personalRecords: prData,
   });
 

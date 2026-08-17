@@ -255,6 +255,30 @@ export function computeYearTotals(
     }));
 }
 
+// Dati mensili NON cumulativi (km del singolo mese) per Google Charts
+export function buildMonthlyChartData(monthlyData: any[]) {
+  const months = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
+  const years = [...new Set(monthlyData.map((d) => d._id.year as number))].sort();
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
+
+  const rows = months.map((monthName, i) => {
+    const monthNum = i + 1;
+    return [
+      monthName,
+      ...years.map((year) => {
+        if (year === currentYear && monthNum >= currentMonth) return null;
+        const total = monthlyData
+          .filter((d) => d._id.year === year && d._id.month === monthNum)
+          .reduce((acc, d) => acc + d.total_distance / 1000, 0);
+        return Math.round(total * 10) / 10;
+      }),
+    ];
+  });
+
+  return { header: ["Mese", ...years.map(String)], rows, years };
+}
+
 // Dati cumulativi mensili per Google Charts
 export function buildChartData(monthlyData: any[]) {
   const months = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
