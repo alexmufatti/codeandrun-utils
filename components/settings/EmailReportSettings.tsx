@@ -14,7 +14,7 @@ interface ReportSettings {
 
 const DAY_NAMES = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
 
-export default function WeightReport() {
+export default function EmailReportSettings() {
   const [settings, setSettings] = useState<ReportSettings>({
     reportEnabled: false,
     reportRecipients: [],

@@ -445,23 +445,28 @@ export default function StatsClient({
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
   const forecastKey = `${currentYear}_forecast`;
-  const showForecast = visibleYears.includes(currentYear) && currentMonth < 12;
+  // Base the projection only on fully-completed months — the current month is
+  // still in progress, so including its partial total would both understate
+  // the monthly average and leave a one-month gap where neither the actual
+  // nor the forecast line has a value.
+  const lastCompleteMonth = currentMonth - 1;
+  const showForecast = visibleYears.includes(currentYear) && lastCompleteMonth >= 1;
 
   let forecastRows = chartRows;
   if (showForecast) {
     const currentYearData = monthlyData.filter(
-      (d) => d._id.year === currentYear && d._id.month <= currentMonth
+      (d) => d._id.year === currentYear && d._id.month <= lastCompleteMonth
     );
     const totalSoFar = currentYearData.reduce((acc, d) => {
       if (metric === "total_distance") return acc + d.total_distance / 1000;
       if (metric === "elevation") return acc + d.elevation;
       return acc + d.count;
     }, 0);
-    const avgMonthly = currentMonth > 0 ? totalSoFar / currentMonth : 0;
+    const avgMonthly = totalSoFar / lastCompleteMonth;
     forecastRows = chartRows.map((row, i) => {
       const monthNum = i + 1;
-      if (monthNum < currentMonth) return { ...row, [forecastKey]: null };
-      const projected = totalSoFar + (monthNum - currentMonth) * avgMonthly;
+      if (monthNum < lastCompleteMonth) return { ...row, [forecastKey]: null };
+      const projected = totalSoFar + (monthNum - lastCompleteMonth) * avgMonthly;
       return {
         ...row,
         [forecastKey]:

@@ -17,18 +17,20 @@ export default function DashboardNav() {
   const isWpUser = !!(session?.user as { isWpUser?: boolean } | undefined)?.isWpUser;
 
   const NAV_LINKS = [
-    { href: "/dashboard", label: "Riepilogo", exact: true },
+    { href: "/dashboard", label: t.nav.home, exact: true },
     { href: "/dashboard/strava", label: t.nav.activities, exact: true },
     { href: "/dashboard/strava/stats", label: t.nav.runningStats, exact: false },
     { href: "/dashboard/hrv", label: t.nav.hrvRestHr, exact: false },
     { href: "/dashboard/sleep", label: t.nav.sleep, exact: false },
     { href: "/dashboard/meals", label: t.nav.mealPlanner, exact: false },
+    { href: "/dashboard/habits", label: t.nav.habitTracker, exact: false },
     ...(isWpUser ? [{ href: "/dashboard/media", label: t.nav.media, exact: false }] : []),
     ...(isWpUser ? [{ href: "/dashboard/posts/new", label: t.nav.newPost, exact: false }] : []),
     { href: "/dashboard/weight", label: t.nav.weightTracker },
     { href: "/dashboard/pace", label: t.nav.racePlanner },
     { href: "/dashboard/vdot", label: t.nav.trainingZones },
     { href: "/dashboard/hr", label: t.nav.hrZones },
+    { href: "/dashboard/settings", label: t.nav.settings },
   ];
 
   const isLinkActive = (href: string, exact?: boolean) =>

@@ -1,4 +1,5 @@
 import DashboardNav from "@/components/dashboard/DashboardNav";
+import QuickNav from "@/components/dashboard/QuickNav";
 import LoginButton from "@/components/auth/LoginButton";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { LangToggle } from "@/components/ui/LangToggle";
@@ -24,7 +25,8 @@ export default function DashboardLayout({
           </div>
         </div>
       </header>
-      {children}
+      <div className="pb-16">{children}</div>
+      <QuickNav />
     </div>
   );
 }

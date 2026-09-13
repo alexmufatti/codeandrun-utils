@@ -65,7 +65,7 @@ function sleepScoreColor(score: number | null): string {
 }
 
 export function buildReportHtml(data: ReportData): string {
-  const { weight, hrv, restHr, sleep, activities, generatedAt } = data;
+  const { weight, hrv, restHr, sleep, activities, habits, generatedAt } = data;
   const dateLabel = generatedAt.toLocaleDateString("it-IT", {
     day: "numeric",
     month: "long",
@@ -102,6 +102,25 @@ export function buildReportHtml(data: ReportData): string {
   const noActivities = activities.length === 0
     ? `<p style="color:#888;font-size:13px;margin:8px 0 0;">Nessuna corsa negli ultimi 7 giorni.</p>`
     : "";
+
+  const habitRows = habits
+    .map((h) => {
+      const done = h.progress >= h.targetPerWeek;
+      const pct = Math.min(100, Math.round((h.progress / h.targetPerWeek) * 100));
+      return `
+      <tr>
+        <td style="padding:6px 8px;border-bottom:1px solid #f0f0f0;font-size:13px;">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${h.color};margin-right:6px;"></span>${h.name}
+        </td>
+        <td style="padding:6px 8px;border-bottom:1px solid #f0f0f0;">
+          <div style="background:#f0f0f0;border-radius:4px;height:8px;width:100px;overflow:hidden;">
+            <div style="background:${done ? "#10B981" : h.color};height:8px;width:${pct}%;"></div>
+          </div>
+        </td>
+        <td style="padding:6px 8px;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right;font-weight:600;color:${done ? "#10B981" : "#555"};">${h.progress}/${h.targetPerWeek}${done ? " ✓" : ""}</td>
+      </tr>`;
+    })
+    .join("");
 
   const targetRow = weight.targetKg
     ? `<div style="margin-top:6px;font-size:13px;color:#555;">
@@ -292,6 +311,18 @@ export function buildReportHtml(data: ReportData): string {
       </tr>
       ${activityRows}
     </table>` : noActivities}
+
+    <!-- ── HABIT ── -->
+    ${habits.length > 0 ? `
+    <h2 style="margin:24px 0 12px;font-size:15px;font-weight:700;color:${BASE};border-bottom:2px solid ${ACCENT};padding-bottom:6px;">✅ Habit (settimana in corso)</h2>
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:6px;overflow:hidden;border:1px solid #f0f0f0;">
+      <tr style="background:#f8f9fb;">
+        <th style="padding:6px 8px;font-size:11px;text-align:left;color:#888;font-weight:600;text-transform:uppercase;">Habit</th>
+        <th style="padding:6px 8px;font-size:11px;text-align:left;color:#888;font-weight:600;text-transform:uppercase;">Progresso</th>
+        <th style="padding:6px 8px;font-size:11px;text-align:right;color:#888;font-weight:600;text-transform:uppercase;">Check-in</th>
+      </tr>
+      ${habitRows}
+    </table>` : ""}
 
   </td></tr>
 

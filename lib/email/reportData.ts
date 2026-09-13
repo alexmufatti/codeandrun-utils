@@ -5,6 +5,8 @@ import RestHrEntry from "@/models/RestHrEntry";
 import StravaActivity from "@/models/StravaActivity";
 import UserSettings from "@/models/UserSettings";
 import SleepEntry from "@/models/SleepEntry";
+import Habit from "@/models/Habit";
+import HabitCheckin from "@/models/HabitCheckin";
 
 export interface WeightReportData {
   current: number | null;
@@ -58,12 +60,21 @@ export interface SleepReportData {
   }[];
 }
 
+export interface HabitReportData {
+  name: string;
+  kind: "manual" | "strava";
+  targetPerWeek: number;
+  color: string;
+  progress: number;
+}
+
 export interface ReportData {
   weight: WeightReportData;
   hrv: HrvReportData;
   restHr: RestHrReportData;
   sleep: SleepReportData;
   activities: StravaActivityData[];
+  habits: HabitReportData[];
   periodDays: number;
   generatedAt: Date;
 }
@@ -85,7 +96,7 @@ export async function gatherReportData(userId: string): Promise<ReportData> {
   const since = sevenDaysAgo();
   const sinceStr = toDateStr(since);
 
-  const [weightEntries, settings, hrvEntries, restHrEntries, stravaActivities, sleepEntries] =
+  const [weightEntries, settings, hrvEntries, restHrEntries, stravaActivities, sleepEntries, habits] =
     await Promise.all([
       WeightEntry.find({ userId, date: { $gte: since } })
         .sort({ date: 1 })
@@ -107,7 +118,58 @@ export async function gatherReportData(userId: string): Promise<ReportData> {
       SleepEntry.find({ userId, calendarDate: { $gte: sinceStr } })
         .sort({ calendarDate: 1 })
         .lean(),
+      Habit.find({ userId, archived: false }).sort({ order: 1 }).lean(),
     ]);
+
+  // ── Habits ────────────────────────────────────────────────────────────────
+  const manualHabitIds = habits.filter((h) => h.kind === "manual").map((h) => h._id.toString());
+  const stravaHabitTypes = [
+    ...new Set(habits.filter((h) => h.kind === "strava").map((h) => h.stravaType)),
+  ];
+
+  const [habitCheckins, habitActivities] = await Promise.all([
+    manualHabitIds.length
+      ? HabitCheckin.find({ habitId: { $in: manualHabitIds }, date: { $gte: since } }).lean()
+      : Promise.resolve([]),
+    stravaHabitTypes.length
+      ? StravaActivity.find({
+          userId,
+          sport_type: { $in: stravaHabitTypes },
+          start_date: { $gte: since.toISOString() },
+        })
+          .select({ sport_type: 1, start_date: 1, _id: 0 })
+          .lean()
+      : Promise.resolve([]),
+  ]);
+
+  const checkinsByHabit = new Map<string, Set<string>>();
+  for (const c of habitCheckins) {
+    const key = c.habitId as string;
+    const dateStr = (c.date as Date).toISOString().split("T")[0];
+    if (!checkinsByHabit.has(key)) checkinsByHabit.set(key, new Set());
+    checkinsByHabit.get(key)!.add(dateStr);
+  }
+
+  const activitiesByStravaType = new Map<string, Set<string>>();
+  for (const a of habitActivities as unknown as { sport_type: string; start_date: string }[]) {
+    if (!activitiesByStravaType.has(a.sport_type)) activitiesByStravaType.set(a.sport_type, new Set());
+    activitiesByStravaType.get(a.sport_type)!.add(a.start_date.slice(0, 10));
+  }
+
+  const habitsData: HabitReportData[] = habits.map((h) => {
+    const id = h._id.toString();
+    const progress =
+      h.kind === "manual"
+        ? (checkinsByHabit.get(id)?.size ?? 0)
+        : (activitiesByStravaType.get(h.stravaType!)?.size ?? 0);
+    return {
+      name: h.name as string,
+      kind: h.kind as "manual" | "strava",
+      targetPerWeek: h.targetPerWeek as number,
+      color: h.color as string,
+      progress,
+    };
+  });
 
   // ── Weight ────────────────────────────────────────────────────────────────
   const wEntries = weightEntries.map((e) => ({
@@ -240,6 +302,7 @@ export async function gatherReportData(userId: string): Promise<ReportData> {
       entries: sEntries,
     },
     activities,
+    habits: habitsData,
     periodDays: 7,
     generatedAt: new Date(),
   };
