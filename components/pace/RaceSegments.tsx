@@ -1,11 +1,16 @@
 "use client";
 
-import { useLocalStorage } from "@/lib/hooks/useLocalStorage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { calculateSegments, formatTime, formatPace } from "@/lib/pace/calculations";
+import {
+  calculateSegments,
+  formatTime,
+  formatPace,
+  resolveEffectiveSegments,
+  parseDecimal,
+} from "@/lib/pace/calculations";
 import { cn } from "@/lib/utils";
 import { useTranslations, interpolate } from "@/lib/i18n/LanguageContext";
 import type { Segment } from "@/types/pace";
@@ -17,7 +22,7 @@ const PRESET_DISTANCES = [
   { label: "Maratona", value: "42.195" },
 ];
 
-function makeSegment(): Segment {
+export function makeSegment(): Segment {
   return {
     id: Math.random().toString(36).slice(2),
     label: "",
@@ -27,10 +32,20 @@ function makeSegment(): Segment {
   };
 }
 
-export default function RaceSegments() {
+interface RaceSegmentsProps {
+  totalRaceKm: string;
+  setTotalRaceKm: (value: string) => void;
+  segments: Segment[];
+  setSegments: (updater: (prev: Segment[]) => Segment[]) => void;
+}
+
+export default function RaceSegments({
+  totalRaceKm,
+  setTotalRaceKm,
+  segments,
+  setSegments,
+}: RaceSegmentsProps) {
   const { t } = useTranslations();
-  const [totalRaceKm, setTotalRaceKm] = useLocalStorage("pace-segments-total-km", "");
-  const [segments, setSegments] = useLocalStorage<Segment[]>("pace-segments-list", [makeSegment(), makeSegment()]);
 
   function update(id: string, field: "label" | "distanceKm" | "paceInput", value: string) {
     setSegments((prev) =>
@@ -52,20 +67,9 @@ export default function RaceSegments() {
     setSegments((prev) => prev.filter((s) => s.id !== id));
   }
 
-  const totalKm = parseFloat(totalRaceKm);
-  const otherDists = segments
-    .filter((s) => !s.isRest)
-    .reduce((sum, s) => {
-      const d = parseFloat(s.distanceKm);
-      return sum + (isFinite(d) && d > 0 ? d : 0);
-    }, 0);
-  const restDistKm = isFinite(totalKm) && totalKm > 0 ? totalKm - otherDists : NaN;
-
-  const effectiveSegments = segments.map((s) =>
-    s.isRest
-      ? { ...s, distanceKm: isFinite(restDistKm) && restDistKm > 0 ? String(restDistKm) : "" }
-      : s
-  );
+  const effectiveSegments = resolveEffectiveSegments(segments, totalRaceKm);
+  const restSeg = effectiveSegments.find((s) => s.isRest);
+  const restDistKm = restSeg ? parseDecimal(restSeg.distanceKm) : NaN;
   const totals = calculateSegments(effectiveSegments);
 
   return (

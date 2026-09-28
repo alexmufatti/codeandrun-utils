@@ -16,3 +16,10 @@ export interface Segment {
   paceInput: string;
   isRest?: boolean;
 }
+
+export interface SegmentBreakpoint {
+  startKm: number;
+  endKm: number;
+  startSec: number;
+  paceSec: number;
+}

@@ -1,6 +1,11 @@
-import type { Split, SplitUnit } from "@/types/pace";
+import type { Segment, SegmentBreakpoint, Split, SplitUnit } from "@/types/pace";
 
 const MI_TO_KM = 1.60934;
+
+/** decimal string accepting comma or dot, NaN if invalid */
+export function parseDecimal(str: string): number {
+  return Number(str.trim().replace(",", "."));
+}
 
 /** "MM:SS" → seconds/km, returns NaN if invalid */
 export function parsePace(str: string): number {
@@ -136,6 +141,91 @@ export function calculatePassageTime(
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+/** Resolve "Resto" segment's distanceKm from total race distance minus other segments */
+export function resolveEffectiveSegments(
+  segments: Segment[],
+  totalRaceKm: string
+): Segment[] {
+  const totalKm = parseDecimal(totalRaceKm);
+  const otherDistKm = segments
+    .filter((s) => !s.isRest)
+    .reduce((sum, s) => {
+      const d = parseDecimal(s.distanceKm);
+      return sum + (isFinite(d) && d > 0 ? d : 0);
+    }, 0);
+  const restDistKm = isFinite(totalKm) && totalKm > 0 ? totalKm - otherDistKm : NaN;
+
+  return segments.map((s) =>
+    s.isRest
+      ? { ...s, distanceKm: isFinite(restDistKm) && restDistKm > 0 ? String(restDistKm) : "" }
+      : s
+  );
+}
+
+/**
+ * Build cumulative distance/time breakpoints from an ordered segment list.
+ * Stops at the first invalid/empty segment — checkpoints beyond that point
+ * can't be resolved from the plan.
+ */
+export function buildSegmentBreakpoints(segments: Segment[]): SegmentBreakpoint[] {
+  const breakpoints: SegmentBreakpoint[] = [];
+  let cumKm = 0;
+  let cumSec = 0;
+
+  for (const seg of segments) {
+    const distKm = parseDecimal(seg.distanceKm);
+    const paceSec = parsePace(seg.paceInput);
+    if (!isFinite(distKm) || distKm <= 0 || !isFinite(paceSec) || paceSec <= 0) break;
+
+    breakpoints.push({ startKm: cumKm, endKm: cumKm + distKm, startSec: cumSec, paceSec });
+    cumKm += distKm;
+    cumSec += distKm * paceSec;
+  }
+
+  return breakpoints;
+}
+
+/**
+ * Elapsed race time (seconds) at a given distance, per the segment plan.
+ * paceOffsetSec shifts every segment's pace (e.g. for a tolerance band).
+ * Returns NaN if the distance falls outside the resolved plan.
+ */
+export function getElapsedSecFromSegments(
+  distKm: number,
+  breakpoints: SegmentBreakpoint[],
+  paceOffsetSec = 0
+): number {
+  if (!isFinite(distKm) || distKm < 0) return NaN;
+
+  const bp = breakpoints.find((b) => distKm >= b.startKm && distKm <= b.endKm);
+  if (!bp) return NaN;
+
+  const baseSec = bp.startSec + (distKm - bp.startKm) * bp.paceSec;
+  return Math.max(0, baseSec + paceOffsetSec * distKm);
+}
+
+/**
+ * startMinutes + distance + segment plan → "HH:MM" wall-clock time.
+ * paceOffsetSec shifts every segment's pace (e.g. for a tolerance band).
+ * Returns "—" if the distance falls outside the resolved plan.
+ */
+export function calculatePassageTimeFromSegments(
+  startMinutes: number,
+  distKm: number,
+  breakpoints: SegmentBreakpoint[],
+  paceOffsetSec = 0
+): string {
+  if (!isFinite(startMinutes)) return "—";
+
+  const elapsedSec = getElapsedSecFromSegments(distKm, breakpoints, paceOffsetSec);
+  if (!isFinite(elapsedSec)) return "—";
+
+  const totalMin = Math.round(startMinutes + elapsedSec / 60) % (24 * 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 /** Aggregate segment list → totals + average pace */
 export function calculateSegments(
   segments: { distanceKm: string; paceInput: string }[]
@@ -144,7 +234,7 @@ export function calculateSegments(
   let totalDistKm = 0;
 
   for (const seg of segments) {
-    const dist = parseFloat(seg.distanceKm);
+    const dist = parseDecimal(seg.distanceKm);
     const pace = parsePace(seg.paceInput);
     if (!isFinite(dist) || dist <= 0 || !isFinite(pace) || pace <= 0) {
       return null;

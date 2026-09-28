@@ -1,13 +1,23 @@
 "use client";
 
+import { useMemo } from "react";
 import { useLocalStorage } from "@/lib/hooks/useLocalStorage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { parseStartTime, parsePace, calculatePassageTime } from "@/lib/pace/calculations";
+import {
+  parseStartTime,
+  parseDecimal,
+  resolveEffectiveSegments,
+  buildSegmentBreakpoints,
+  calculatePassageTimeFromSegments,
+  getElapsedSecFromSegments,
+  formatTime,
+} from "@/lib/pace/calculations";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "@/lib/i18n/LanguageContext";
+import type { Segment } from "@/types/pace";
 
 interface Checkpoint {
   id: string;
@@ -23,10 +33,14 @@ function makeCheckpoint(): Checkpoint {
   };
 }
 
-export default function PassageTimes() {
+interface PassageTimesProps {
+  segments: Segment[];
+  totalRaceKm: string;
+}
+
+export default function PassageTimes({ segments, totalRaceKm }: PassageTimesProps) {
   const { t } = useTranslations();
   const [startTime, setStartTime] = useLocalStorage("pace-passage-start-time", "");
-  const [paceInput, setPaceInput] = useLocalStorage("pace-passage-pace", "");
   const [toleranceInput, setToleranceInput] = useLocalStorage("pace-passage-tolerance", "");
   const [checkpoints, setCheckpoints] = useLocalStorage<Checkpoint[]>("pace-passage-checkpoints", [
     makeCheckpoint(),
@@ -35,10 +49,20 @@ export default function PassageTimes() {
   ]);
 
   const startMinutes = parseStartTime(startTime);
-  const paceSec = parsePace(paceInput);
   const toleranceSec = Math.max(0, parseInt(toleranceInput) || 0);
   const hasRange = toleranceSec > 0;
-  const inputsValid = isFinite(startMinutes) && isFinite(paceSec) && paceSec > 0;
+
+  const breakpoints = useMemo(() => {
+    const effectiveSegments = resolveEffectiveSegments(segments, totalRaceKm);
+    return buildSegmentBreakpoints(effectiveSegments);
+  }, [segments, totalRaceKm]);
+
+  const inputsValid = isFinite(startMinutes) && breakpoints.length > 0;
+
+  const elapsedSecs = useMemo(
+    () => checkpoints.map((cp) => getElapsedSecFromSegments(parseDecimal(cp.distanceKm), breakpoints)),
+    [checkpoints, breakpoints]
+  );
 
   function updateCheckpoint(id: string, field: "label" | "distanceKm", value: string) {
     setCheckpoints((prev) =>
@@ -62,8 +86,12 @@ export default function PassageTimes() {
         <p className="text-sm text-muted-foreground">{t.pace.passageTimesDesc}</p>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {/* Start time + Pace + Tolerance inputs */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pb-4 border-b border-border">
+        {breakpoints.length === 0 && (
+          <p className="text-sm text-muted-foreground">{t.pace.passageTimesNoPlan}</p>
+        )}
+
+        {/* Start time + Tolerance inputs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-4 border-b border-border">
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               {t.pace.startTimeLabel}
@@ -72,17 +100,6 @@ export default function PassageTimes() {
               placeholder={t.pace.startTimePlaceholder}
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              className="font-mono h-10 w-36"
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              {t.pace.passageTimePaceLabel}
-            </Label>
-            <Input
-              placeholder={t.pace.pacePlaceholder}
-              value={paceInput}
-              onChange={(e) => setPaceInput(e.target.value)}
               className="font-mono h-10 w-36"
             />
           </div>
@@ -105,8 +122,8 @@ export default function PassageTimes() {
         <div className={cn(
           "hidden sm:grid gap-2 px-1",
           hasRange
-            ? "grid-cols-[28px_1fr_140px_200px_36px]"
-            : "grid-cols-[28px_1fr_140px_120px_36px]"
+            ? "grid-cols-[28px_1fr_140px_200px_120px_36px]"
+            : "grid-cols-[28px_1fr_140px_120px_120px_36px]"
         )}>
           <span />
           <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -118,28 +135,34 @@ export default function PassageTimes() {
           <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             {t.pace.passageTimeCol}
           </Label>
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            {t.pace.intervalCol}
+          </Label>
           <span />
         </div>
 
         {/* Checkpoint rows */}
         {checkpoints.map((cp, i) => {
-          const dist = parseFloat(cp.distanceKm);
+          const dist = parseDecimal(cp.distanceKm);
           const isValid = inputsValid && isFinite(dist) && dist > 0;
 
           let passageDisplay = "—";
           if (isValid) {
             if (hasRange) {
-              const fastPace = Math.max(1, paceSec - toleranceSec);
-              const slowPace = paceSec + toleranceSec;
-              const early = calculatePassageTime(startMinutes, dist, fastPace);
-              const late = calculatePassageTime(startMinutes, dist, slowPace);
-              passageDisplay = `${early} – ${late}`;
+              const early = calculatePassageTimeFromSegments(startMinutes, dist, breakpoints);
+              const late = calculatePassageTimeFromSegments(startMinutes, dist, breakpoints, toleranceSec);
+              passageDisplay = early === "—" || late === "—" ? "—" : `${early} – ${late}`;
             } else {
-              passageDisplay = calculatePassageTime(startMinutes, dist, paceSec);
+              passageDisplay = calculatePassageTimeFromSegments(startMinutes, dist, breakpoints);
             }
           }
 
           const hasResult = passageDisplay !== "—";
+
+          const prevElapsedSec = i > 0 ? elapsedSecs[i - 1] : NaN;
+          const intervalSec = elapsedSecs[i] - prevElapsedSec;
+          const intervalDisplay =
+            isFinite(elapsedSecs[i]) && isFinite(prevElapsedSec) ? formatTime(intervalSec) : "—";
 
           return (
             <div
@@ -147,8 +170,8 @@ export default function PassageTimes() {
               className={cn(
                 "grid grid-cols-1 gap-2 items-end",
                 hasRange
-                  ? "sm:grid-cols-[28px_1fr_140px_200px_36px]"
-                  : "sm:grid-cols-[28px_1fr_140px_120px_36px]"
+                  ? "sm:grid-cols-[28px_1fr_140px_200px_120px_36px]"
+                  : "sm:grid-cols-[28px_1fr_140px_120px_120px_36px]"
               )}
             >
               {/* Row number */}
@@ -193,6 +216,22 @@ export default function PassageTimes() {
                   )}
                 >
                   {passageDisplay}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <Label className="sm:hidden text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  {t.pace.intervalCol}
+                </Label>
+                <div
+                  className={cn(
+                    "flex h-10 items-center rounded-md border px-3 text-sm font-mono transition-colors",
+                    intervalDisplay !== "—"
+                      ? "border-border text-foreground"
+                      : "border-border text-muted-foreground"
+                  )}
+                >
+                  {intervalDisplay}
                 </div>
               </div>
 
