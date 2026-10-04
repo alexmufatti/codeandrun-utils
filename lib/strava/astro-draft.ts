@@ -37,6 +37,34 @@ async function downloadMapBuffer(polyline: string): Promise<Buffer | null> {
   return Buffer.from(buf);
 }
 
+// Campi interni/rumorosi da non includere nel commento dati.
+const DATA_COMMENT_EXCLUDE = new Set(["_id", "userId", "athleteId", "embed_token", "astroSlug", "astroPostUrl"]);
+
+function activityDataForComment(activity: any): Record<string, unknown> {
+  const raw = typeof activity.toObject === "function" ? activity.toObject() : activity;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (DATA_COMMENT_EXCLUDE.has(k) || v === null || v === undefined) continue;
+    if (k === "map" && v && typeof v === "object") {
+      // le polyline sono enormi e inutili per scrivere l'articolo
+      const { id, summary_polyline, polyline, resource_state, ...rest } = v as Record<string, unknown>;
+      void id; void summary_polyline; void polyline; void resource_state;
+      if (Object.keys(rest).length) out[k] = rest;
+      continue;
+    }
+    out[k] = v;
+  }
+  return out;
+}
+
+// Commento MDX con tutti i dati Strava delle attività incluse (non renderizzato).
+function buildDataComment(sorted: any[]): string {
+  const json = JSON.stringify(sorted.map(activityDataForComment), null, 2)
+    // "*/" chiuderebbe il commento
+    .replace(/\*\//g, "*\\/");
+  return `{/*\nDATI ATTIVITÀ (Strava)\n\n${json}\n*/}`;
+}
+
 export interface AstroDraftActivity {
   id: number;
   name: string;
@@ -109,6 +137,8 @@ export async function generateAstroDraft(
 ## Uscite
 
 ${accordions}
+
+${buildDataComment(sorted)}
 `;
 
   return {
