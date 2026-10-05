@@ -36,7 +36,7 @@ Strategy is JWT even with the MongoDB adapter — the adapter stores `users` and
 - **`lib/mongodb.ts`** — Mongoose singleton (global cache pattern) for app data
 - **`lib/auth.ts`** — Also instantiates a native `MongoClient` for the NextAuth adapter
 - DB name: `codeandrun-utils`, Atlas cluster
-- Models (all in `models/`): `WeightEntry` (unique `{userId,date}`), `UserSettings` (`targetWeightKg`), `HrvEntry`, `RestHrEntry`, `SleepEntry`, `StravaActivity` (strict:false, stores raw Strava JSON), `StravaConnection`, `StravaUpdate` (webhook queue), `StravaEvent`, `PersonalRecord`, `EmailReportSettings`, `MealPlan`, `MealShare`
+- Models (all in `models/`): `WeightEntry` (unique `{userId,date}`), `UserSettings` (`targetWeightKg`), `HrvEntry`, `RestHrEntry`, `SleepEntry`, `StravaActivity` (strict:false, stores raw Strava JSON), `StravaConnection`, `StravaUpdate` (webhook queue), `StravaEvent`, `PersonalRecord`, `EmailReportSettings`
 - Dates: weight/Strava use UTC midnight `Date` objects; HRV/RestHR/Sleep use `calendarDate` string (`YYYY-MM-DD`)
 
 ### i18n
@@ -48,16 +48,11 @@ Strategy is JWT even with the MongoDB adapter — the adapter stores `users` and
 | Feature | Pages | Components | Lib |
 |---------|-------|------------|-----|
 | Dashboard home | `app/dashboard/page.tsx` → `WeekSummaryClient` | — | `GET /api/summary/week` aggregates last-7-days weight/HRV/RestHR/sleep/Strava for one card view |
-| Meal planner | `app/dashboard/meals/`, `app/meals/shared/[token]/` | `components/meals/` | `app/api/meals/` (weekly grid CRUD), `app/api/meals/share/` (issue/revoke share token) |
 | Weight tracker | `app/dashboard/weight/` | `components/weight/` | `lib/weight/calculations.ts` |
 | Pace calculator | `app/dashboard/pace/` | `components/pace/` | `lib/pace/calculations.ts` |
 | VDOT zones | `app/dashboard/vdot/` | `components/vdot/` | `lib/vdot/calculations.ts` |
 
 Pace and VDOT features are client-only (no API/DB). Weight tracker has API routes at `app/api/weight/`.
-
-### Read-only Sharing (`/shared/[token]/...`)
-
-`MealShare` doubles as the generic share-token store for the whole app, not just meals — despite the name, it gates `app/shared/[token]/{weight,sleep,hrv,resthr,pace,vdot,strava,meals,hr}` and matching `app/api/shared/[token]/*` routes. `lib/shared/validateToken.ts` validates the 48-hex-char token against `MealShare` and returns `{ userId, canWrite }`; these routes have **no session/auth check**, so token secrecy is the only access control. One share per user (`userId` is a unique index); `canWrite` only matters for the meals endpoints.
 
 ### Astro Draft Publishing
 
