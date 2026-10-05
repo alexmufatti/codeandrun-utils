@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "@/lib/i18n/LanguageContext";
 import { Menu, X } from "lucide-react";
@@ -11,20 +10,15 @@ import { Menu, X } from "lucide-react";
 export default function DashboardNav() {
   const pathname = usePathname();
   const { t } = useTranslations();
-  const { data: session } = useSession();
   const [open, setOpen] = useState(false);
-
-  const isWpUser = !!(session?.user as { isWpUser?: boolean } | undefined)?.isWpUser;
 
   const NAV_LINKS = [
     { href: "/dashboard", label: t.nav.home, exact: true },
-    { href: "/dashboard/strava", label: t.nav.activities, exact: true },
+    { href: "/dashboard/blog", label: t.nav.blog, exact: false },
     { href: "/dashboard/strava/stats", label: t.nav.runningStats, exact: false },
     { href: "/dashboard/hrv", label: t.nav.hrvRestHr, exact: false },
     { href: "/dashboard/sleep", label: t.nav.sleep, exact: false },
     { href: "/dashboard/habits", label: t.nav.habitTracker, exact: false },
-    ...(isWpUser ? [{ href: "/dashboard/media", label: t.nav.media, exact: false }] : []),
-    ...(isWpUser ? [{ href: "/dashboard/posts/new", label: t.nav.newPost, exact: false }] : []),
     { href: "/dashboard/weight", label: t.nav.weightTracker },
     { href: "/dashboard/pace", label: t.nav.racePlanner },
     { href: "/dashboard/vdot", label: t.nav.trainingZones },

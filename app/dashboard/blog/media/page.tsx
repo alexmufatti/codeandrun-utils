@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { isWordPressUser } from "@/lib/wordpress-auth";
-import MediaPageClient from "@/components/media/MediaPageClient";
+import MediaPageClient from "./MediaPageClient";
 
 export default async function MediaPage() {
   const session = await auth();

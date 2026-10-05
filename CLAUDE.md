@@ -60,7 +60,7 @@ Pace and VDOT features are client-only (no API/DB). Weight tracker has API route
 
 `scripts/migrate-images-to-webp.mjs` — one-off/rerunnable script converting existing S3-hosted images to WebP and rewriting MDX references; supports `--dry-run`.
 
-### Media Gallery (`/dashboard/media`)
+### Media Gallery (`/dashboard/blog/media`)
 
 `app/api/media/` — `GET` lists everything under the `uploads/` S3 prefix (via `listImages()` in `lib/s3.ts`, newest first, capped at 300), `POST` uploads a new image. Both gated by `isWordPressUser()`. `resizeAndUploadImage()` (`lib/s3.ts`) is the shared upload path — resizes to 1200px wide and re-encodes to WebP via `sharp`, used by both this route and the Astro draft's `upload-media` route so all uploads land in the same `uploads/YYYY/MM/slug.ext` namespace and show up in the gallery.
 
@@ -97,9 +97,10 @@ Auth is Google-primary + Strava as an optional linked account (not a NextAuth pr
 
 - `models/StravaConnection.ts` — stores `{ userId, athleteId, accessToken, refreshToken, expiresAt, athleteFirstname, athleteLastname }` with `userId` as unique key
 - `GET /api/connect/strava` — redirects to Strava OAuth (requires active session)
-- `GET /api/connect/strava/callback` — exchanges code, upserts `StravaConnection`, redirects to `/dashboard/strava`
+- `GET /api/connect/strava/callback` — exchanges code, upserts `StravaConnection`, redirects to `/dashboard/settings`
 - `DELETE /api/connect/strava/disconnect` — removes the connection
-- `app/dashboard/strava/` — page showing connection status; future home for activity list
+- `components/settings/StravaConnection.tsx` — connect/disconnect card, rendered in `/dashboard/settings` (OAuth errors arrive as `?error=`).
+- `app/dashboard/blog/` — Blog section, admin only (`isWordPressUser()` in `layout.tsx`), tabs in `BlogTabs.tsx`: `posts/new` and `media`. `/dashboard/blog` redirects to `posts/new`. Strava posts are authored in `posts/new`: the "Post Strava" toggle opens `ActivityPickerModal`, which calls `POST /api/strava/activities/astro` and fills the form (draft helpers in `posts/new/stravaDraft.tsx`). Running stats stay at `app/dashboard/strava/stats/`. Old URLs (`/dashboard/strava`, `/media`, `/posts/new`) redirect via `next.config.ts`.
 
 Strava access tokens expire in 6 hours. `lib/strava/getAccessToken.ts` handles automatic refresh (refreshes if expiring within 60s). Use this helper before any Strava API call.
 

@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "@/lib/i18n/LanguageContext";
-import StravaActivities from "./StravaActivities";
 
 interface StravaStatus {
   connected: boolean;
@@ -12,9 +10,8 @@ interface StravaStatus {
   athleteLastname?: string;
 }
 
-export default function StravaPageClient({ error, isWpUser }: { error: string | null; isWpUser: boolean }) {
+export default function StravaConnection({ error }: { error: string | null }) {
   const { t } = useTranslations();
-  const router = useRouter();
   const [status, setStatus] = useState<StravaStatus | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
 
@@ -32,9 +29,7 @@ export default function StravaPageClient({ error, isWpUser }: { error: string | 
   }
 
   return (
-    <main className="max-w-5xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-semibold mb-6">{t.strava.pageTitle}</h1>
-
+    <div>
       {error && (
         <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error === "access_denied"
@@ -44,7 +39,7 @@ export default function StravaPageClient({ error, isWpUser }: { error: string | 
       )}
 
       {/* Card connessione */}
-      <div className="rounded-lg border border-border bg-card p-4 mb-6">
+      <div className="rounded-lg border border-border bg-card p-4 ">
         {status === null ? (
           <div className="text-sm text-muted-foreground">{t.auth.loading}</div>
         ) : status.connected ? (
@@ -80,9 +75,6 @@ export default function StravaPageClient({ error, isWpUser }: { error: string | 
           </div>
         )}
       </div>
-
-      {/* Lista attività */}
-      {status?.connected && <StravaActivities isWpUser={isWpUser} />}
-    </main>
+    </div>
   );
 }

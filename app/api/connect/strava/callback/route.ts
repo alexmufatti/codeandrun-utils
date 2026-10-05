@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
   if (error || !code) {
     return NextResponse.redirect(
-      new URL("/dashboard/strava?error=access_denied", BASE_URL)
+      new URL("/dashboard/settings?error=access_denied", BASE_URL)
     );
   }
 
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 
   if (!tokenRes.ok) {
     return NextResponse.redirect(
-      new URL("/dashboard/strava?error=token_exchange", BASE_URL)
+      new URL("/dashboard/settings?error=token_exchange", BASE_URL)
     );
   }
 
@@ -55,5 +55,5 @@ export async function GET(req: NextRequest) {
     { upsert: true, new: true }
   );
 
-  return NextResponse.redirect(new URL("/dashboard/strava", BASE_URL));
+  return NextResponse.redirect(new URL("/dashboard/settings", BASE_URL));
 }
