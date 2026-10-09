@@ -3,6 +3,12 @@ services:
     image: codeandrun-web:latest
     ports:
       - "3002:3000"
+    labels:
+      homepage.group: Services
+      homepage.name: Code and Run Apps
+      homepage.icon: mdi-run
+      homepage.href: https://apps.codeandrun.it
+      homepage.description: Utility per runner
     env_file:
       - .env.local
     restart: unless-stopped

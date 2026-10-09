@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import PhotoPicker from "@/components/media/PhotoPicker";
+import { buildMdx } from "@/lib/posts/buildMdx";
 import type { AstroDraft, AstroDraftActivity } from "@/lib/strava/astro-draft";
 import { type Activity, isoWeek } from "../../activities";
 import ActivityPickerModal from "./ActivityPickerModal";
@@ -45,6 +46,7 @@ export default function NewPostForm() {
   const [featuredImage, setFeaturedImage] = useState<string | null>(null);
   const [seoDescription, setSeoDescription] = useState("");
   const [publishing, setPublishing] = useState(false);
+  const [showMdx, setShowMdx] = useState(false);
 
   // Strava post: activities chosen in the picker, plus the fields only the draft generator fills
   const [stravaMode, setStravaMode] = useState(false);
@@ -121,6 +123,34 @@ export default function NewPostForm() {
   const setActivityField = (id: number, field: "trainingType" | "trainingFeeling", value: string) => {
     setDraftActivities((prev) => prev.map((a) => (a.id === id ? { ...a, [field]: value } : a)));
   };
+
+  const fullMdx = () =>
+    stravaMode
+      ? buildDraftMdx(
+          {
+            title,
+            date,
+            excerpt,
+            seoDescription,
+            categories: csvToArray(categories),
+            tags: csvToArray(tags),
+            featuredImage: featuredImage ?? "",
+            car_week: carWeek,
+            car_km: carKm,
+          },
+          draftActivities,
+          body
+        )
+      : buildMdx({
+          title,
+          date,
+          excerpt: excerpt || undefined,
+          seoDescription: seoDescription || undefined,
+          categories: csvToArray(categories),
+          tags: csvToArray(tags),
+          featuredImage: featuredImage || undefined,
+          body,
+        });
 
   const handlePublish = async () => {
     if (!title.trim() || !body.trim()) {
@@ -372,6 +402,36 @@ export default function NewPostForm() {
           rows={16}
           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
         />
+      </div>
+
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={() => setShowMdx((v) => !v)}
+          className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors"
+        >
+          {showMdx ? "Nascondi MDX completo" : "Mostra MDX completo"}
+        </button>
+        {showMdx && (
+          <div className="space-y-1">
+            <textarea
+              readOnly
+              value={fullMdx()}
+              rows={20}
+              className="w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-xs font-mono"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(fullMdx());
+                toast.success("MDX copiato");
+              }}
+              className="text-xs text-[#FC4C02] hover:underline"
+            >
+              Copia
+            </button>
+          </div>
+        )}
       </div>
 
       <button
