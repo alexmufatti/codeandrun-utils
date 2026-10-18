@@ -31,6 +31,22 @@ Auth is intentionally split into two files due to Edge Runtime restrictions:
 
 Strategy is JWT even with the MongoDB adapter — the adapter stores `users` and `accounts` collections, but sessions remain JWT tokens. User ID is propagated: `jwt` callback copies `user.id` → `token.id`, then `session` callback copies `token.id` → `session.user.id`. API routes access `session.user.id` for all data queries.
 
+### Access Approval
+
+Signing in with Google is the access request. The adapter's `users` doc carries `accessStatus` (`pending` when missing, `approved`, `rejected`), managed in `lib/access.ts`. The `session` callback in `lib/auth.ts` reads it on every `auth()` call and sets `session.user.id` **only for approved users** — every API route gates on `session.user.id`, so non-approved users get 401 everywhere without per-route checks. `app/dashboard/layout.tsx` redirects them to `/pending`.
+
+The admin is the `WP_ALLOWED_USER_EMAIL` user (`isWordPressUser()`): always approved, sees Blog/HRV/Sleep/Users in `DashboardNav`, and approves or rejects requests at `/dashboard/admin` (`app/api/admin/users/`). A new sign-up triggers `lib/email/notifyAccessRequest.ts` (mail to the admin, needs SMTP env vars).
+
+### Privacy Policy / Consent
+
+`lib/privacy/content.ts` holds the policy text (it/en) and `PRIVACY_POLICY_VERSION`; `/privacy` renders it publicly, with the controller taken from `PRIVACY_CONTROLLER_NAME` / `PRIVACY_CONTACT_EMAIL`. An approved non-admin user must accept the current version at `/consent` (`POST /api/account/consent` stores `privacyConsent: { version, acceptedAt }` on the `users` doc) before `session.user.id` is set — bumping the version sends everyone back to `/consent`. `session.user.accountId` is always set and is used **only** by the consent route and the user's own export/deletion, which must work before admission; data routes keep gating on `id`.
+
+HRV / resting HR / sleep sections (home cards, email report) are shown only when `hasGarminData()` (`lib/garmin.ts`) finds any such entry for the user.
+
+### Account Export / Deletion
+
+`lib/account.ts` is the single place that knows every per-user collection: `exportUserData()` (JSON dump, Strava tokens excluded) and `deleteUserAccount()` (revokes the Strava authorization, deletes all user-owned docs plus the NextAuth `users`/`accounts` rows). **A new model with a `userId` field must be added to both.** Exposed as `GET /api/account/export` and `DELETE /api/account` (body must repeat the account email), UI in `components/settings/AccountData.tsx`; the admin can delete other users via `DELETE /api/admin/users/[id]`.
+
 ### Database
 
 - **`lib/mongodb.ts`** — Mongoose singleton (global cache pattern) for app data
@@ -85,11 +101,11 @@ Always use UTC when constructing date strings for chart ranges or DB queries —
 
 ### Garmin Sync
 
-`garmin-sync/` — Python container that pulls Garmin data (HRV, RestHR, Sleep) and writes directly to MongoDB. Runs on a schedule; also calls `POST /api/report/send` with `x-cron-secret` header to trigger weekly email reports.
+`garmin-sync/` — Python container that pulls Garmin data (HRV, RestHR, Sleep) and writes directly to MongoDB. Single-user by design (the admin's account only); other users get no Garmin sync. Runs on a schedule; also calls `POST /api/report/send` with `x-cron-secret` header to trigger weekly email reports.
 
 ### Email Report
 
-`lib/email/` — weekly health report (weight, HRV, RestHR, sleep, Strava runs). Settings in `models/EmailReportSettings.ts`. `POST /api/report/send` serves both cron (via `x-cron-secret: PROCESS_QUEUE_SECRET`) and authenticated UI calls. Requires env vars: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_SECURE`.
+`lib/email/` — weekly health report (weight, HRV, RestHR, sleep, Strava runs). Settings in `models/EmailReportSettings.ts`. Weekly only (max 3 recipients; legacy daily/monthly docs are treated as weekly). `POST /api/report/send` serves both cron (via `x-cron-secret: PROCESS_QUEUE_SECRET`) and authenticated UI calls. The UI call is a test send, limited to one per 24h per user (`reportLastTestAt`, claimed atomically; 429 with `retryAt` otherwise) and does not touch `reportLastSentAt`. Requires env vars: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_SECURE`.
 
 ### Strava Integration
 
@@ -97,7 +113,8 @@ Auth is Google-primary + Strava as an optional linked account (not a NextAuth pr
 
 - `models/StravaConnection.ts` — stores `{ userId, athleteId, accessToken, refreshToken, expiresAt, athleteFirstname, athleteLastname }` with `userId` as unique key
 - `GET /api/connect/strava` — redirects to Strava OAuth (requires active session)
-- `GET /api/connect/strava/callback` — exchanges code, upserts `StravaConnection`, redirects to `/dashboard/settings`
+- `GET /api/connect/strava/callback` — checks the `state` cookie set by the connect route (CSRF) and that `activity:read_all` was granted, exchanges code, upserts `StravaConnection`, redirects to `/dashboard/settings`. Connecting does **not** backfill history: activities arrive only through the webhook.
+- `POST /api/strava/webhook` — Strava events are unsigned; only well-formed events about an athlete with a `StravaConnection` are queued in `StravaUpdate`
 - `DELETE /api/connect/strava/disconnect` — removes the connection
 - `components/settings/StravaConnection.tsx` — connect/disconnect card, rendered in `/dashboard/settings` (OAuth errors arrive as `?error=`).
 - `app/dashboard/blog/` — Blog section, admin only (`isWordPressUser()` in `layout.tsx`), tabs in `BlogTabs.tsx`: `posts/new` and `media`. `/dashboard/blog` redirects to `posts/new`. Strava posts are authored in `posts/new`: the "Post Strava" toggle opens `ActivityPickerModal`, which calls `POST /api/strava/activities/astro` and fills the form (draft helpers in `posts/new/stravaDraft.tsx`). Running stats stay at `app/dashboard/strava/stats/`. Old URLs (`/dashboard/strava`, `/media`, `/posts/new`) redirect via `next.config.ts`.
@@ -115,6 +132,7 @@ NEXTAUTH_URL        # or trustHost: true handles reverse proxy
 STRAVA_CLIENT_ID
 STRAVA_CLIENT_SECRET
 STRAVA_VERIFY_TOKEN     # shared secret for Strava webhook subscription verification
+STRAVA_SUBSCRIPTION_ID  # optional: webhook events from any other subscription id are ignored
 PROCESS_QUEUE_SECRET    # secret header for cron-triggered endpoints (/api/strava/process-queue, /api/report/send)
 WP_ALLOWED_USER_EMAIL   # only this email can access the Astro draft / stats publishing features
 SMTP_HOST
@@ -123,6 +141,8 @@ SMTP_USER
 SMTP_PASS
 SMTP_FROM
 SMTP_SECURE             # "true" for TLS
+PRIVACY_CONTROLLER_NAME # data controller shown on /privacy
+PRIVACY_CONTACT_EMAIL   # contact address shown on /privacy
 G_STATICMAP_KEY         # Google Static Maps API key (optional, for route maps in Astro drafts)
 AWS_ACCESS_KEY_ID       # S3 upload for Astro draft images / image migration script
 AWS_SECRET_ACCESS_KEY

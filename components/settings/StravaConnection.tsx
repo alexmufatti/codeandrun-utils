@@ -34,7 +34,9 @@ export default function StravaConnection({ error }: { error: string | null }) {
         <div className="mb-4 rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error === "access_denied"
             ? t.strava.errorAccessDenied
-            : t.strava.errorTokenExchange}
+            : error === "missing_scope"
+              ? t.strava.errorMissingScope
+              : t.strava.errorTokenExchange}
         </div>
       )}
 

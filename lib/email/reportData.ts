@@ -7,6 +7,7 @@ import UserSettings from "@/models/UserSettings";
 import SleepEntry from "@/models/SleepEntry";
 import Habit from "@/models/Habit";
 import HabitCheckin from "@/models/HabitCheckin";
+import { hasGarminData } from "@/lib/garmin";
 
 export interface WeightReportData {
   current: number | null;
@@ -75,6 +76,7 @@ export interface ReportData {
   sleep: SleepReportData;
   activities: StravaActivityData[];
   habits: HabitReportData[];
+  hasGarmin: boolean; // false → HRV / resting HR / sleep sections are left out
   periodDays: number;
   generatedAt: Date;
 }
@@ -95,6 +97,8 @@ export async function gatherReportData(userId: string): Promise<ReportData> {
 
   const since = sevenDaysAgo();
   const sinceStr = toDateStr(since);
+
+  const hasGarmin = await hasGarminData(userId);
 
   const [weightEntries, settings, hrvEntries, restHrEntries, stravaActivities, sleepEntries, habits] =
     await Promise.all([
@@ -281,6 +285,7 @@ export async function gatherReportData(userId: string): Promise<ReportData> {
 
   return {
     weight: { current, delta7d, avg7d, targetKg, deltaFromTarget, entries: wEntries },
+    hasGarmin,
     hrv: {
       avg7d: hrvAvg7d,
       latest: latestHrv?.lastNightAvg ?? null,

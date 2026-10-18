@@ -65,7 +65,7 @@ function sleepScoreColor(score: number | null): string {
 }
 
 export function buildReportHtml(data: ReportData): string {
-  const { weight, hrv, restHr, sleep, activities, habits, generatedAt } = data;
+  const { weight, hrv, restHr, sleep, activities, habits, hasGarmin, generatedAt } = data;
   const dateLabel = generatedAt.toLocaleDateString("it-IT", {
     day: "numeric",
     month: "long",
@@ -184,6 +184,7 @@ export function buildReportHtml(data: ReportData): string {
       ${weightRows}
     </table>` : `<p style="color:#888;font-size:13px;margin:0 0 24px;">Nessun dato peso negli ultimi 7 giorni.</p>`}
 
+    ${hasGarmin ? `
     <!-- ── HRV ── -->
     <h2 style="margin:0 0 12px;font-size:15px;font-weight:700;color:${BASE};border-bottom:2px solid ${ACCENT};padding-bottom:6px;">💜 HRV (Heart Rate Variability)</h2>
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
@@ -295,6 +296,7 @@ export function buildReportHtml(data: ReportData): string {
         )
         .join("")}
     </table>` : `<p style="color:#888;font-size:13px;margin:0 0 24px;">Nessun dato sonno negli ultimi 7 giorni.</p>`}
+    ` : ""}
 
     <!-- ── ATTIVITÀ STRAVA ── -->
     <h2 style="margin:0 0 12px;font-size:15px;font-weight:700;color:${BASE};border-bottom:2px solid ${ACCENT};padding-bottom:6px;">🏃 Corse (ultimi 7 giorni)</h2>

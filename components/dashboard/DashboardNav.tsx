@@ -7,24 +7,26 @@ import { cn } from "@/lib/utils";
 import { useTranslations } from "@/lib/i18n/LanguageContext";
 import { Menu, X } from "lucide-react";
 
-export default function DashboardNav() {
+export default function DashboardNav({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
   const { t } = useTranslations();
   const [open, setOpen] = useState(false);
 
+  // Blog and the Garmin-fed pages (HRV, sleep) only have data for the admin.
   const NAV_LINKS = [
     { href: "/dashboard", label: t.nav.home, exact: true },
-    { href: "/dashboard/blog", label: t.nav.blog, exact: false },
+    { href: "/dashboard/blog", label: t.nav.blog, exact: false, adminOnly: true },
     { href: "/dashboard/strava/stats", label: t.nav.runningStats, exact: false },
-    { href: "/dashboard/hrv", label: t.nav.hrvRestHr, exact: false },
-    { href: "/dashboard/sleep", label: t.nav.sleep, exact: false },
+    { href: "/dashboard/hrv", label: t.nav.hrvRestHr, exact: false, adminOnly: true },
+    { href: "/dashboard/sleep", label: t.nav.sleep, exact: false, adminOnly: true },
     { href: "/dashboard/habits", label: t.nav.habitTracker, exact: false },
     { href: "/dashboard/weight", label: t.nav.weightTracker },
     { href: "/dashboard/pace", label: t.nav.racePlanner },
     { href: "/dashboard/vdot", label: t.nav.trainingZones },
     { href: "/dashboard/hr", label: t.nav.hrZones },
     { href: "/dashboard/settings", label: t.nav.settings },
-  ];
+    { href: "/dashboard/admin", label: t.nav.admin, adminOnly: true },
+  ].filter((link) => isAdmin || !link.adminOnly);
 
   const isLinkActive = (href: string, exact?: boolean) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");

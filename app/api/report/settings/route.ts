@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import EmailReportSettings from "@/models/EmailReportSettings";
 
+const MAX_REPORT_RECIPIENTS = 3;
+
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
@@ -18,9 +20,10 @@ export async function GET() {
   return NextResponse.json({
     reportEnabled: settings?.reportEnabled ?? false,
     reportRecipients: settings?.reportRecipients ?? [],
-    reportFrequency: settings?.reportFrequency ?? "weekly",
+    reportFrequency: "weekly",
     reportDayOfWeek: settings?.reportDayOfWeek ?? 1,
     reportLastSentAt: settings?.reportLastSentAt ?? null,
+    reportLastTestAt: settings?.reportLastTestAt ?? null,
   });
 }
 
@@ -31,12 +34,12 @@ export async function PUT(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { reportEnabled, reportRecipients, reportFrequency, reportDayOfWeek } = body;
+  const { reportEnabled, reportRecipients, reportDayOfWeek } = body;
 
   if (
     typeof reportEnabled !== "boolean" ||
     !Array.isArray(reportRecipients) ||
-    !["daily", "weekly", "monthly"].includes(reportFrequency) ||
+    reportRecipients.length > MAX_REPORT_RECIPIENTS ||
     typeof reportDayOfWeek !== "number" ||
     reportDayOfWeek < 0 ||
     reportDayOfWeek > 6
@@ -63,7 +66,7 @@ export async function PUT(req: NextRequest) {
       userId: session.user.id,
       reportEnabled,
       reportRecipients,
-      reportFrequency,
+      reportFrequency: "weekly",
       reportDayOfWeek,
       updatedAt: new Date(),
     },
@@ -73,8 +76,9 @@ export async function PUT(req: NextRequest) {
   return NextResponse.json({
     reportEnabled: settings!.reportEnabled,
     reportRecipients: settings!.reportRecipients,
-    reportFrequency: settings!.reportFrequency,
+    reportFrequency: "weekly",
     reportDayOfWeek: settings!.reportDayOfWeek,
     reportLastSentAt: settings!.reportLastSentAt,
+    reportLastTestAt: settings!.reportLastTestAt ?? null,
   });
 }

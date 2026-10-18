@@ -7,10 +7,14 @@ import { toast } from "sonner";
 interface ReportSettings {
   reportEnabled: boolean;
   reportRecipients: string[];
-  reportFrequency: "daily" | "weekly" | "monthly";
+  reportFrequency: "weekly";
   reportDayOfWeek: number;
   reportLastSentAt: string | null;
+  reportLastTestAt: string | null;
 }
+
+const TEST_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const MAX_RECIPIENTS = 3;
 
 const DAY_NAMES = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
 
@@ -21,6 +25,7 @@ export default function EmailReportSettings() {
     reportFrequency: "weekly",
     reportDayOfWeek: 1,
     reportLastSentAt: null,
+    reportLastTestAt: null,
   });
   const [recipientInput, setRecipientInput] = useState("");
   const [loading, setLoading] = useState(true);
@@ -45,6 +50,11 @@ export default function EmailReportSettings() {
       .split(/[,;\s]+/)
       .map((s) => s.trim())
       .filter(Boolean);
+
+    if (recipients.length > MAX_RECIPIENTS) {
+      toast.error(`Massimo ${MAX_RECIPIENTS} destinatari`);
+      return;
+    }
 
     setSaving(true);
     try {
@@ -76,7 +86,7 @@ export default function EmailReportSettings() {
         toast.error(err.error ?? "Errore durante l'invio");
         return;
       }
-      toast.success("Report inviato con successo!");
+      toast.success("Report di prova inviato!");
       // Refresh lastSentAt
       const settingsRes = await fetch("/api/report/settings");
       if (settingsRes.ok) setSettings(await settingsRes.json());
@@ -84,6 +94,11 @@ export default function EmailReportSettings() {
       setSending(false);
     }
   }
+
+  const testAvailableAt = settings.reportLastTestAt
+    ? new Date(settings.reportLastTestAt).getTime() + TEST_COOLDOWN_MS
+    : 0;
+  const testOnCooldown = testAvailableAt > Date.now();
 
   if (loading) return null;
 
@@ -131,34 +146,12 @@ export default function EmailReportSettings() {
             className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-[var(--run-accent)]"
           />
           <p className="text-xs text-muted-foreground">
-            Separati da virgola o spazio
+            Massimo 3, separati da virgola o spazio. Il report parte una volta a settimana.
           </p>
         </div>
 
-        {/* Frequency */}
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Frequenza
-          </label>
-          <div className="flex gap-2">
-            {(["daily", "weekly", "monthly"] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setSettings((s) => ({ ...s, reportFrequency: f }))}
-                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
-                  settings.reportFrequency === f
-                    ? "bg-[var(--run-accent)] text-white border-[var(--run-accent)]"
-                    : "border-border text-muted-foreground hover:border-foreground hover:text-foreground"
-                }`}
-              >
-                {f === "daily" ? "Giornaliero" : f === "weekly" ? "Settimanale" : "Mensile"}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Day of week (only for weekly) */}
-        {settings.reportFrequency === "weekly" && (
+        {(
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Giorno della settimana
@@ -195,6 +188,18 @@ export default function EmailReportSettings() {
           </p>
         )}
 
+        {testOnCooldown && (
+          <p className="text-xs text-muted-foreground">
+            Invio di prova disponibile di nuovo dopo il{" "}
+            {new Date(testAvailableAt).toLocaleString("it-IT", {
+              day: "numeric",
+              month: "long",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </p>
+        )}
+
         {/* Actions */}
         <div className="flex gap-3 pt-1">
           <button
@@ -206,10 +211,10 @@ export default function EmailReportSettings() {
           </button>
           <button
             onClick={sendNow}
-            disabled={sending || !settings.reportEnabled || recipientInput.trim() === ""}
+            disabled={sending || testOnCooldown || !settings.reportEnabled || recipientInput.trim() === ""}
             className="px-4 py-2 rounded-md text-sm font-semibold border border-[var(--run-accent)] text-[var(--run-accent)] hover:bg-[var(--run-accent)] hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {sending ? "Invio..." : "Invia ora"}
+            {sending ? "Invio..." : "Invia prova"}
           </button>
         </div>
       </CardContent>

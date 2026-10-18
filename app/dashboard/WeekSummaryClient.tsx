@@ -5,6 +5,7 @@ import Link from "next/link";
 import { TrendingDown, TrendingUp, Minus, Heart, Moon, Activity, Scale, Zap } from "lucide-react";
 
 type WeekSummary = {
+  hasGarmin: boolean;
   weight: {
     latest: { date: string; weightKg: number } | null;
     delta: number | null;
@@ -197,44 +198,48 @@ export default function WeekSummaryClient({
               noData={!data.weight.latest}
             />
 
-            {/* HRV */}
-            <StatCard
-              icon={<Zap className="h-4 w-4" />}
-              title="HRV media"
-              href={`${basePath}/hrv`}
-              value={data.hrv.avg !== null ? String(data.hrv.avg) : null}
-              unit="ms"
-              sub={
-                data.hrv.latestStatus ? (
-                  <span className="text-xs text-muted-foreground capitalize">{data.hrv.latestStatus}</span>
-                ) : undefined
-              }
-              noData={data.hrv.avg === null}
-            />
+            {data.hasGarmin && (
+              <>
+              {/* HRV */}
+              <StatCard
+                icon={<Zap className="h-4 w-4" />}
+                title="HRV media"
+                href={`${basePath}/hrv`}
+                value={data.hrv.avg !== null ? String(data.hrv.avg) : null}
+                unit="ms"
+                sub={
+                  data.hrv.latestStatus ? (
+                    <span className="text-xs text-muted-foreground capitalize">{data.hrv.latestStatus}</span>
+                  ) : undefined
+                }
+                noData={data.hrv.avg === null}
+              />
 
-            {/* Rest HR */}
-            <StatCard
-              icon={<Heart className="h-4 w-4" />}
-              title="FC riposo"
-              href={`${basePath}/hrv`}
-              value={data.resthr.avg !== null ? String(data.resthr.avg) : null}
-              unit="bpm"
-              noData={data.resthr.avg === null}
-            />
+              {/* Rest HR */}
+              <StatCard
+                icon={<Heart className="h-4 w-4" />}
+                title="FC riposo"
+                href={`${basePath}/hrv`}
+                value={data.resthr.avg !== null ? String(data.resthr.avg) : null}
+                unit="bpm"
+                noData={data.resthr.avg === null}
+              />
 
-            {/* Sleep */}
-            <StatCard
-              icon={<Moon className="h-4 w-4" />}
-              title="Sonno medio"
-              href={`${basePath}/sleep`}
-              value={data.sleep.avgSeconds !== null ? formatSleepHours(data.sleep.avgSeconds) : null}
-              sub={
-                data.sleep.avgScore !== null ? (
-                  <span className="text-xs text-muted-foreground">Score {data.sleep.avgScore}</span>
-                ) : undefined
-              }
-              noData={data.sleep.avgSeconds === null}
-            />
+              {/* Sleep */}
+              <StatCard
+                icon={<Moon className="h-4 w-4" />}
+                title="Sonno medio"
+                href={`${basePath}/sleep`}
+                value={data.sleep.avgSeconds !== null ? formatSleepHours(data.sleep.avgSeconds) : null}
+                sub={
+                  data.sleep.avgScore !== null ? (
+                    <span className="text-xs text-muted-foreground">Score {data.sleep.avgScore}</span>
+                  ) : undefined
+                }
+                noData={data.sleep.avgSeconds === null}
+              />
+              </>
+            )}
           </div>
 
           {/* Strava section */}

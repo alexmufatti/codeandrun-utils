@@ -1,3 +1,4 @@
+import AccountData from "@/components/settings/AccountData";
 import EmailReportSettings from "@/components/settings/EmailReportSettings";
 import StravaConnection from "@/components/settings/StravaConnection";
 
@@ -12,6 +13,7 @@ export default async function SettingsPage({
       <h1 className="text-lg font-semibold">Impostazioni</h1>
       <StravaConnection error={error ?? null} />
       <EmailReportSettings />
+      <AccountData />
     </main>
   );
 }

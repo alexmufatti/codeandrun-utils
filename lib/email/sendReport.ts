@@ -2,7 +2,7 @@ import nodemailer from "nodemailer";
 import { gatherReportData } from "./reportData";
 import { buildReportHtml, buildReportSubject } from "./reportTemplate";
 
-function createTransport() {
+export function createTransport() {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   const secure = process.env.SMTP_SECURE === "true";

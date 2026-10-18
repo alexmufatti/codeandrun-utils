@@ -6,6 +6,7 @@ import HrvEntry from "@/models/HrvEntry";
 import RestHrEntry from "@/models/RestHrEntry";
 import SleepEntry from "@/models/SleepEntry";
 import StravaActivity from "@/models/StravaActivity";
+import { hasGarminData } from "@/lib/garmin";
 
 function weekAgoDate(): Date {
   const d = new Date();
@@ -30,7 +31,7 @@ export async function GET() {
 
   await connectDB();
 
-  const [weightEntries, hrvEntries, resthrEntries, sleepEntries, stravaActivities] =
+  const [weightEntries, hrvEntries, resthrEntries, sleepEntries, stravaActivities, hasGarmin] =
     await Promise.all([
       WeightEntry.find({ userId, date: { $gte: fromDate } })
         .sort({ date: 1 })
@@ -71,6 +72,8 @@ export async function GET() {
           _id: 0,
         })
         .lean(),
+
+      hasGarminData(userId),
     ]);
 
   // Weight aggregation
@@ -136,6 +139,7 @@ export async function GET() {
   );
 
   return NextResponse.json({
+    hasGarmin,
     weight: {
       latest: latestWeight
         ? {

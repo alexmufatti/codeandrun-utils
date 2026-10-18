@@ -13,8 +13,11 @@ import { sendWeeklyReport } from "@/lib/email/sendReport";
  *     Query param ?force=true skips the schedule check.
  *
  *  2. Authenticated user from the UI: normal session cookie.
- *     Always sends immediately (acts as ?force=true for the calling user).
+ *     Test send, rate-limited to one per TEST_COOLDOWN_MS. Does not touch
+ *     reportLastSentAt, so it never blocks the scheduled weekly send.
  */
+const TEST_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
 export async function POST(req: NextRequest) {
   const cronSecret = req.headers.get("x-cron-secret");
   const isCron =
@@ -42,11 +45,43 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await sendWeeklyReport(session.user.id, settings.reportRecipients);
-    await EmailReportSettings.updateOne(
-      { userId: session.user.id },
-      { reportLastSentAt: new Date() }
-    );
+    // Atomically claim the cooldown slot before sending.
+    const now = new Date();
+    const claimed = await EmailReportSettings.findOneAndUpdate(
+      {
+        userId: session.user.id,
+        $or: [
+          { reportLastTestAt: null },
+          { reportLastTestAt: { $lte: new Date(now.getTime() - TEST_COOLDOWN_MS) } },
+        ],
+      },
+      { reportLastTestAt: now },
+      { new: false }
+    ).lean();
+
+    if (!claimed) {
+      const last = settings.reportLastTestAt
+        ? new Date(settings.reportLastTestAt).getTime()
+        : now.getTime();
+      return NextResponse.json(
+        {
+          error: "Invio di prova già effettuato di recente, riprova più tardi",
+          retryAt: new Date(last + TEST_COOLDOWN_MS).toISOString(),
+        },
+        { status: 429 }
+      );
+    }
+
+    try {
+      await sendWeeklyReport(session.user.id, settings.reportRecipients);
+    } catch (err) {
+      // Give the slot back if nothing was sent.
+      await EmailReportSettings.updateOne(
+        { userId: session.user.id },
+        { reportLastTestAt: claimed.reportLastTestAt ?? null }
+      );
+      throw err;
+    }
 
     return NextResponse.json({ sent: 1 });
   }
@@ -61,13 +96,12 @@ export async function POST(req: NextRequest) {
 
   const now = new Date();
   const todayDow = now.getDay(); // 0=Sun
-  const todayDom = now.getDate();
 
   let sent = 0;
   let errors = 0;
 
   for (const s of allSettings) {
-    const shouldSend = force || shouldSendNow(s, now, todayDow, todayDom);
+    const shouldSend = force || shouldSendNow(s, now, todayDow);
     if (!shouldSend) continue;
 
     try {
@@ -87,33 +121,17 @@ export async function POST(req: NextRequest) {
 }
 
 function shouldSendNow(
-  s: {
-    reportFrequency: string;
-    reportDayOfWeek: number;
-    reportLastSentAt: Date | null;
-  },
+  s: { reportDayOfWeek: number; reportLastSentAt: Date | null },
   now: Date,
-  todayDow: number,
-  todayDom: number
+  todayDow: number
 ): boolean {
   const last = s.reportLastSentAt ? new Date(s.reportLastSentAt) : null;
 
   // Avoid double-sending on the same calendar day
-  if (last) {
-    const lastDate = last.toISOString().split("T")[0];
-    const todayDate = now.toISOString().split("T")[0];
-    if (lastDate === todayDate) return false;
+  if (last && last.toISOString().split("T")[0] === now.toISOString().split("T")[0]) {
+    return false;
   }
 
-  if (s.reportFrequency === "daily") return true;
-
-  if (s.reportFrequency === "weekly") {
-    return todayDow === s.reportDayOfWeek;
-  }
-
-  if (s.reportFrequency === "monthly") {
-    return todayDom === 1; // first of month
-  }
-
-  return false;
+  // Weekly only; legacy daily/monthly docs are treated as weekly.
+  return todayDow === s.reportDayOfWeek;
 }

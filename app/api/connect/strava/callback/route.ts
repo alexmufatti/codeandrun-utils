@@ -1,9 +1,25 @@
+import { timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import StravaConnection from "@/models/StravaConnection";
+import { STRAVA_REQUIRED_SCOPE, STRAVA_STATE_COOKIE } from "@/lib/strava/oauth";
 
 const BASE_URL = process.env.NEXTAUTH_URL!;
+
+function sameState(expected: string | undefined, received: string | null): boolean {
+  if (!expected || !received || expected.length !== received.length) return false;
+  return timingSafeEqual(Buffer.from(expected), Buffer.from(received));
+}
+
+// Redirects back to settings, always dropping the one-shot state cookie.
+function backToSettings(error?: string): NextResponse {
+  const url = new URL("/dashboard/settings", BASE_URL);
+  if (error) url.searchParams.set("error", error);
+  const res = NextResponse.redirect(url);
+  res.cookies.delete({ name: STRAVA_STATE_COOKIE, path: "/api/connect/strava" });
+  return res;
+}
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -15,10 +31,17 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get("code");
   const error = searchParams.get("error");
 
+  if (!sameState(req.cookies.get(STRAVA_STATE_COOKIE)?.value, searchParams.get("state"))) {
+    return backToSettings("invalid_state");
+  }
+
   if (error || !code) {
-    return NextResponse.redirect(
-      new URL("/dashboard/settings?error=access_denied", BASE_URL)
-    );
+    return backToSettings("access_denied");
+  }
+
+  const grantedScopes = (searchParams.get("scope") ?? "").split(",");
+  if (!grantedScopes.includes(STRAVA_REQUIRED_SCOPE)) {
+    return backToSettings("missing_scope");
   }
 
   const tokenRes = await fetch("https://www.strava.com/oauth/token", {
@@ -33,9 +56,7 @@ export async function GET(req: NextRequest) {
   });
 
   if (!tokenRes.ok) {
-    return NextResponse.redirect(
-      new URL("/dashboard/settings?error=token_exchange", BASE_URL)
-    );
+    return backToSettings("token_exchange");
   }
 
   const data = await tokenRes.json();
@@ -55,5 +76,5 @@ export async function GET(req: NextRequest) {
     { upsert: true, new: true }
   );
 
-  return NextResponse.redirect(new URL("/dashboard/settings", BASE_URL));
+  return backToSettings();
 }
