@@ -40,7 +40,7 @@ export default function NewPostForm() {
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
   const [excerpt, setExcerpt] = useState("");
-  const [categories, setCategories] = useState("");
+  const [categories, setCategories] = useState("Fuori pista");
   const [tags, setTags] = useState("");
   const [body, setBody] = useState("");
   const [featuredImage, setFeaturedImage] = useState<string | null>(null);
@@ -320,14 +320,16 @@ export default function NewPostForm() {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <label className="text-sm font-medium">Categorie</label>
-          <input
-            type="text"
-            placeholder="Running, Sport"
+          <label className="text-sm font-medium">Categoria</label>
+          <select
             value={categories}
             onChange={(e) => setCategories(e.target.value)}
             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-          />
+          >
+            <option value="Allenamenti">Allenamenti</option>
+            <option value="Gare">Gare</option>
+            <option value="Fuori pista">Fuori pista</option>
+          </select>
         </div>
         <div className="space-y-1">
           <label className="text-sm font-medium">Tag</label>

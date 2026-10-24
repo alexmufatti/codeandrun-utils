@@ -149,7 +149,7 @@ ${buildDataComment(sorted)}
       date: dateStr,
       excerpt: "",
       seoDescription: "",
-      categories: ["Running", "Sport"],
+      categories: ["Allenamenti"],
       tags: [],
       featuredImage: "",
       car_week: `W${weeks[0]}`,
