@@ -103,6 +103,8 @@ Always use UTC when constructing date strings for chart ranges or DB queries —
 
 `garmin-sync/` — Python container that pulls Garmin data (HRV, RestHR, Sleep) and writes directly to MongoDB. Single-user by design (the admin's account only); other users get no Garmin sync. Runs on a schedule; also calls `POST /api/report/send` with `x-cron-secret` header to trigger weekly email reports.
 
+It uses Garmin's official Personal API (`garmin-connect-personal-api-python`), authenticated with `GARMIN_PERSONAL_API_KEY` (generated at connect.garmin.com/app/settings/personalApiToken; **expires after at most 1 year**, then the sync logs "Personal API key rejected" and must be given a new key in `/data/utils/.env.local`). The key is exchanged for a 24h bearer token cached in the `garmin-tokens` volume (`/data/garmin_tokens/bearer-token.json`). HRV and sleep use the batch endpoints in 30-day chunks (the sleep one answers HTTP 400 on ranges around 90 days); RestHR is one call per day. `python sync.py --dry-run` logs what would change without writing. The Personal API has no planned-workout/calendar endpoints, so that stays with `garmin-calendar/`.
+
 ### Email Report
 
 `lib/email/` — weekly health report (weight, HRV, RestHR, sleep, Strava runs). Settings in `models/EmailReportSettings.ts`. Weekly only (max 3 recipients; legacy daily/monthly docs are treated as weekly). `POST /api/report/send` serves both cron (via `x-cron-secret: PROCESS_QUEUE_SECRET`) and authenticated UI calls. The UI call is a test send, limited to one per 24h per user (`reportLastTestAt`, claimed atomically; 429 with `retryAt` otherwise) and does not touch `reportLastSentAt`. Requires env vars: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_SECURE`.
